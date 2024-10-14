@@ -100,6 +100,30 @@ def find_subsequent_duplicates(y, subsequent_duplicates):
 
     return subsequent_filter
 
+def add_time_features(df):
+    df['M_TIMESTAMP'] = pd.to_datetime(df['M_TIMESTAMP'])
+    # Extract features from 'M_TIMESTAMP'
+    df['hour'] = df['M_TIMESTAMP'].dt.hour
+    df['minute'] = df['M_TIMESTAMP'].dt.minute
+    df['weekday'] = df['M_TIMESTAMP'].dt.weekday
+    df['month'] = df['M_TIMESTAMP'].dt.month   
+    
+    # # Cyclic encoding of hour (for time of day)
+    df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
+    df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
+    
+    # # Cyclic encoding of minute
+    df['minute_sin'] = np.sin(2 * np.pi * df['minute'] / 60)
+    df['minute_cos'] = np.cos(2 * np.pi * df['minute'] / 60)
+    
+    df['weekday_sin'] = np.sin(2 * np.pi * df['weekday'] / 7)
+    df['weekday_cos'] = np.cos(2 * np.pi * df['weekday'] / 7)
+
+    df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
+    df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
+    
+    return df
+
 def preprocess_data(X_df: pd.DataFrame, y_df: pd.DataFrame, subsequent_nr: int, lin_fit_quantiles: tuple, label_transform_dict: dict, remove_uncertain: bool, rescale_S_to_kW=False) -> pd.DataFrame:
     """Match bottom up with substation measurements with linear regression and apply the sign value to the substation measurements.
 
@@ -117,6 +141,8 @@ def preprocess_data(X_df: pd.DataFrame, y_df: pd.DataFrame, subsequent_nr: int, 
     pd.options.mode.copy_on_write = True
     X_df = X_df.copy()
     y_df = y_df.copy()
+    
+    #X_df = add_time_features(X_df)
         
     # Calculate difference and add label column.
     if rescale_S_to_kW:
@@ -174,10 +200,12 @@ def preprocess_data(X_df: pd.DataFrame, y_df: pd.DataFrame, subsequent_nr: int, 
     y_df = y_df.reset_index()
     X_df = X_df.reset_index()
     
+    
+    
     return X_df[['M_TIMESTAMP', 
                'S_original', 'BU_original', 'diff_original', 
-               'S', 'BU', 'diff', 
-               'missing']], y_df
+               'S', 'BU', 'diff', 'missing']], y_df
+               #'missing', 'hour_sin', 'hour_cos', 'minute_sin', 'minute_cos', 'weekday_sin', 'weekday_cos', 'month_cos', 'month_sin', ]], y_df
 
 
 def match_bottomup_load(bottomup_load: Union[pd.Series, np.ndarray], measurements: Union[pd.Series, np.ndarray]) -> Tuple[int]:

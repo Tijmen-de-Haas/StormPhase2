@@ -15,6 +15,7 @@ from src.methods import SingleThresholdIsolationForest
 
 from src.methods import SingleThresholdBinarySegmentation
 from src.methods import DoubleThresholdBinarySegmentation
+from src.methods import SingleThresholdLSTM, SingleThresholdARIMA
 
 from src.methods import StackEnsemble
 from src.methods import NaiveStackEnsemble
@@ -29,12 +30,13 @@ from src.evaluation import cutoff_averaged_f_beta, calculate_signed_and_relative
 from src.reporting_functions import print_metrics_and_stats, bootstrap_stats_to_printable
 
 #%% set process variables
+home = "/data/tijmen"
 
-dataset = "route_data" #alternatively: route_data
-data_folder = os.path.join("data", dataset)
-result_folder = os.path.join("results", dataset)
-intermediates_folder = os.path.join("intermediates", dataset)
-model_folder = os.path.join("saved_models", dataset)
+dataset = "OS_data" #alternatively: route_data
+data_folder = os.path.join(home, dataset)
+result_folder = os.path.join(home+"/results", dataset)
+intermediates_folder = os.path.join(home+ "/intermediates", dataset)
+model_folder = os.path.join(home + "/saved_models", dataset)
 
 score_folder = os.path.join(result_folder, "scores")
 predictions_folder = os.path.join(result_folder, "predictions")
@@ -45,13 +47,13 @@ all_cutoffs = [(0, 24), (24, 288), (288, 4032), (4032, np.inf)]
 beta = 1.5
 report_metrics_and_stats = True
 
-remove_missing = True
+remove_missing = False
 
 write_csv_intermediates = True
 
 preprocessing_overwrite = False #if set to True, overwrite previous preprocessed data
 
-training_overwrite = False 
+training_overwrite = False
 validation_overwrite = False
 testing_overwrite = False
 
@@ -60,7 +62,7 @@ bootstrap_iterations = 10000
 
 dry_run = False
 
-verbose = False
+verbose = True
 
 model_test_run = False #Only run 1 hyperparameter setting per model type if True
 
@@ -99,20 +101,44 @@ SingleThresholdIF_hyperparameters_scaling = [{"n_estimators": [1000],
 
 SingleThresholdIF_hyperparameters = SingleThresholdIF_hyperparameters_no_scaling + SingleThresholdIF_hyperparameters_scaling
 
-SingleThresholdSPC_hyperparameters = {"quantiles":[(10,90), (15, 85), (20,80)], 
-                                      "score_function_kwargs":[{"beta":beta}]}
+SingleThresholdSPC_hyperparameters = {"quantiles":[(15,85)], #[(10,90), (15, 85), (20,80)], 
+                                      "score_function_kwargs":[{"beta":beta}],
+                                     "move_avg": [1,3,5,7,9]}
 
 DoubleThresholdSPC_hyperparameters = SingleThresholdSPC_hyperparameters
 
-SingleThresholdBS_hyperparameters = {"beta": [0.12, 0.15, 0.20, 0.30, 0.45], 
+SingleThresholdBS_hyperparameters = {"beta": [0.008],#[0.12, 0.15, 0.20, 0.30, 0.45], 
                                      "model": ['l1'], 
-                                     'min_size': [150, 200, 288], 
-                                     "jump": [5, 10], 
-                                     "quantiles": [(10,90), (15, 85), (20,80)], 
+                                     'min_size': [200], #[150, 200, 288], 
+                                     "jump": [10], #[5, 10], 
+                                     "quantiles": [(10,90)], #[(10,90), (15, 85), (20,80)], 
                                      "scaling": [True], 
                                      "penalty": ['L1'], 
-                                     "reference_point":["minimum_length_best_fit", "mean", "median", "longest_median", "longest_mean"], 
-                                     "score_function_kwargs":[{"beta":beta}]}
+                                     "reference_point":["mean"], #["minimum_length_best_fit", "mean", "median", "longest_median", "longest_mean"], 
+                                     "score_function_kwargs":[{"beta":beta}],
+                                     "move_avg": [1,3,5,7,9]}
+
+LSTM_hyperparameters = {"beta" : [0.20],
+                        "input_dim": [9], 
+                        "window_size": [96], 
+                        "timesteps": [96], 
+                        "latent_dim": [24],
+                        "activation": ['relu'],
+                        "quantiles": [(10,90)],
+                        "optmizer": ['adam'],
+                        "learning_rate": [0.0001],
+                        "loss": ['mse'],
+                        "epochs": [1],
+                        "batch_size": [32],
+                        "score_function_kwargs":[{"beta":beta}]}
+
+SingleThreshold_ARIMA_hyperparameters = {"p": [1,2,3],
+                                         "d": [1,2,3],
+                                         "q": [1,2,3],  
+                                         "m": [96],             
+                                         "quantiles": [(10,90)],
+                                         "score_function_kwargs":[{"beta":beta}]
+                                         }
 
 DoubleThresholdBS_hyperparameters = SingleThresholdBS_hyperparameters
 
@@ -207,41 +233,47 @@ Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters["segmentation_met
 
 #%% define methods:
 
-methods = { "SingleThresholdIF":SingleThresholdIsolationForest,
-            "SingleThresholdBS":SingleThresholdBinarySegmentation, 
-            "SingleThresholdSPC":SingleThresholdStatisticalProcessControl,
+methods = { 
+        #    "SingleThresholdIF":SingleThresholdIsolationForest,
+        #     "SingleThresholdBS":SingleThresholdBinarySegmentation, 
+        #     "SingleThresholdSPC":SingleThresholdStatisticalProcessControl,
             
-            "DoubleThresholdBS":DoubleThresholdBinarySegmentation, 
-            "DoubleThresholdSPC":DoubleThresholdStatisticalProcessControl, 
+        #     "DoubleThresholdBS":DoubleThresholdBinarySegmentation, 
+        #     "DoubleThresholdSPC":DoubleThresholdStatisticalProcessControl, 
             
-            "Naive-SingleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble, 
-            "Naive-DoubleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
-            "Naive-SingleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
-            "Naive-DoubleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-SingleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble, 
+        #     "Naive-DoubleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-SingleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-DoubleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble,
             
-            "SingleThresholdBS+SingleThresholdSPC":StackEnsemble, 
-            "DoubleThresholdBS+DoubleThresholdSPC":StackEnsemble, 
-            "SingleThresholdBS+DoubleThresholdSPC":StackEnsemble,
-            "DoubleThresholdBS+SingleThresholdSPC":StackEnsemble,
+        #     "SingleThresholdBS+SingleThresholdSPC":StackEnsemble, 
+        #     "DoubleThresholdBS+DoubleThresholdSPC":StackEnsemble, 
+        #     "SingleThresholdBS+DoubleThresholdSPC":StackEnsemble,
+        #     "DoubleThresholdBS+SingleThresholdSPC":StackEnsemble,
             
-            "Sequential-SingleThresholdBS+SingleThresholdSPC":SequentialEnsemble, 
-            "Sequential-DoubleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
-            "Sequential-SingleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
-            "Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble,
+            #"Sequential-SingleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for route
+            # "Sequential-DoubleThresholdBS+DoubleThresholdSPC":SequentialEnsemble, 
+            # "Sequential-SingleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
+            #"Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for substations
             
-            "Naive-SingleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
-            "Naive-DoubleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
+            # "Naive-SingleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
+            # "Naive-DoubleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
                 
-            "SingleThresholdBS+SingleThresholdIF":StackEnsemble,
-            "DoubleThresholdBS+SingleThresholdIF":StackEnsemble,
+            # "SingleThresholdBS+SingleThresholdIF":StackEnsemble,
+            # "DoubleThresholdBS+SingleThresholdIF":StackEnsemble,
             
-            "Sequential-SingleThresholdBS+SingleThresholdIF":SequentialEnsemble, 
-            "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
+            # "Sequential-SingleThresholdBS+SingleThresholdIF":SequentialEnsemble, 
+            # "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
+            
+            #"SingleLSTM": SingleThresholdLSTM,
+            "SingleARIMA": SingleThresholdARIMA,
             }
 
 hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                        "SingleThresholdSPC":SingleThresholdSPC_hyperparameters, 
                        "SingleThresholdBS":SingleThresholdBS_hyperparameters, 
+                       "SingleLSTM": LSTM_hyperparameters,
+                       "SingleARIMA": SingleThreshold_ARIMA_hyperparameters,
                        
                        "DoubleThresholdBS":DoubleThresholdBS_hyperparameters, 
                        "DoubleThresholdSPC":DoubleThresholdSPC_hyperparameters, 
@@ -300,7 +332,7 @@ for preprocessing_hyperparameters in preprocessing_hyperparameter_list:
     print(preprocessing_hyperparameter_string)
 
     X_train_dfs_preprocessed, y_train_dfs_preprocessed, label_filters_for_all_cutoffs_train, event_lengths_train = preprocess_per_batch_and_write(X_train_dfs, y_train_dfs, intermediates_folder, which_split, preprocessing_overwrite, write_csv_intermediates, train_file_names, all_cutoffs, preprocessing_hyperparameters, preprocessing_hash, remove_missing, dry_run)
-    
+
     for method_name in methods:
         print("-----------------------------------------------")
         print("Now training: " + method_name)
@@ -403,7 +435,7 @@ for preprocessing_hyperparameters in preprocessing_hyperparameter_list:
     print("-----------------------------------------------")
     print(preprocessing_hyperparameter_string)
     X_val_dfs_preprocessed, y_val_dfs_preprocessed, label_filters_for_all_cutoffs_val, event_lengths_val = preprocess_per_batch_and_write(X_val_dfs, y_val_dfs, intermediates_folder, which_split, preprocessing_overwrite, write_csv_intermediates, val_file_names, all_cutoffs, preprocessing_hyperparameters, preprocessing_hash, remove_missing, dry_run)
-    
+
     for method_name in methods:
         print("-----------------------------------------------")
         print("Now validating: " + method_name)
