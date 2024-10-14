@@ -26,7 +26,7 @@ def cutoff_averaged_f_beta(y_dfs, y_preds_dfs, label_filters_for_all_cutoffs, be
     all_cutoffs = label_filters_for_all_cutoffs[0].keys()
 
     f_betas = 0
-    for cutoffs in all_cutoffs:
+    for cutoffs in all_cutoffs:        
         filtered_y, filtered_y_preds = filter_label_and_predictions_to_array(y_dfs, y_preds_dfs, label_filters_for_all_cutoffs, cutoffs)
         f_betas += fbeta_score(filtered_y, filtered_y_preds, beta=beta)
         
@@ -188,9 +188,9 @@ def calculate_bootstrap_stats(y_dfs, y_pred_dfs, label_filters_for_all_cutoffs, 
     avg_fbeta_std = np.std(np.mean(fbetas, axis=0))
     
     #if any nans, repeat procedure:
-    if PRF_mean_table.isnull().any().any():
-        print("NaN in validation results due to invalid split, recalculating:...")
-        PRF_mean_table, PRF_std_table, avg_fbeta_mean, avg_fbeta_std = calculate_bootstrap_stats(y_dfs, y_pred_dfs, label_filters_for_all_cutoffs, beta, bootstrap_iterations)
+    # if PRF_mean_table.isnull().any().any():
+    #     print("NaN in validation results due to invalid split, recalculating:...")
+    #     PRF_mean_table, PRF_std_table, avg_fbeta_mean, avg_fbeta_std = calculate_bootstrap_stats(y_dfs, y_pred_dfs, label_filters_for_all_cutoffs, beta, bootstrap_iterations)
 
     return PRF_mean_table, PRF_std_table, avg_fbeta_mean, avg_fbeta_std
 
