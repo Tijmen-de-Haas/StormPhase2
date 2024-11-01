@@ -125,7 +125,15 @@ def bootstrap_stats_per_confmat_array(bootstrap_samples, confmat_per_station, be
         tn, fp, fn, tp = confmat_sum
         
         metrics[i,0] = tp/(tp+fp)
-        metrics[i,1] = tp/(tp+fn)
+        if not (tp+fn)==0:
+            metrics[i,1] = tp/(tp+fn)
+        else:
+            if tp==0:
+                metrics[i,1]=0
+            elif tp==fn:
+                metrics[i,1]=0.5
+            else:
+                metrics[i,1]=1
         metrics[i,2] = (1+beta**2) * (tp) / ((1+beta**2)*tp + (beta**2)*fn + fp + eps)
         
     mean_metrics = np.zeros((3,), dtype=np.float64)

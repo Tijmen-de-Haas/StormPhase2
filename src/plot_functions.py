@@ -464,6 +464,7 @@ def plot_Sequential_BS_SPC(X_df, y_df, preds, file, model, model_string, show_TP
 
     """
     BS_threshold = model.segmentation_method.optimal_threshold
+
     # check if doublethresholding was used
     if type(BS_threshold) is tuple:
         lower_threshold, upper_threshold = BS_threshold
@@ -511,6 +512,7 @@ def plot_Sequential_BS_SPC(X_df, y_df, preds, file, model, model_string, show_TP
         else: #if segment is left to SPC anomaly detection
             
             SPC_threshold = model.anomaly_detection_method.optimal_threshold
+
             if model.anomaly_detection_method.threshold_optimization_method == "DoubleThreshold":
                 SPC_lower_threshold = SPC_threshold[0]
                 SPC_upper_threshold = SPC_threshold[1]
@@ -652,7 +654,244 @@ def plot_IF(X_df, y_df, preds, file, model, model_string, show_IF_scores, show_T
     
     fig.tight_layout()
     
-def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = False, which_stations = None, n_stations = 3):
+def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_TP_FP_FN, opacity_TP, scores):
+    """
+    Plot the sequential BS + ARIMA  method, 
+    overlay difference vector with thresholds, breakpoints and reference point,
+    colour predictions outside threshold appropriately
+
+    Parameters
+    ----------
+    X_df : dataframe
+        dataframe to be plotted
+    y_df : dataframe
+        dataframe containing the real labels
+    preds : dataframe
+        dataframe containing the predictions (0 or 1)
+    threshold : int or tuple
+        threshold that decides which values are classified as outliers
+    file : string
+        filename of the dataframe
+    model : a SaveableModel object
+        current model
+    model_string : string
+        string representation of the current model
+    show_TP_FP_FN : boolean
+        indicates whether to colour the background according to TP,FP and FN
+    opacity_TP : float between 0 and 1
+        represents the opacity of the background colour for th TP,FP,FN colouring
+
+    """
+    BS_threshold = model.segmentation_method.optimal_threshold
+
+    # check if doublethresholding was used
+    if type(BS_threshold) is tuple:
+        lower_threshold, upper_threshold = BS_threshold
+    else: 
+        lower_threshold, upper_threshold = -BS_threshold, BS_threshold
+     
+    fig = plt.figure(figsize=(30,16))  
+    
+    gs = GridSpec(6, 1, figure=fig)
+
+    #check input per model
+    print(model.anomaly_detection_method.input)
+    #Diff plot:    
+    signal = X_df[model.anomaly_detection_method.input].values.reshape(-1,1)
+    bkps = model.segmentation_method.get_breakpoints(signal)
+    
+    ax1 = fig.add_subplot(gs[:4,:])
+    plot_bkps(X_df[model.anomaly_detection_method.input], y_df, preds, bkps, show_TP_FP_FN, opacity_TP, ax1, legend_fontsize=25, legend_loc="lower left", legend_bbox_to_anchor=(0, 0))
+    sns.set_theme()
+
+     #Calculate y-limits with a margin for ax1
+    signal_min, signal_max = np.min(signal), np.max(signal)
+    
+    ax1.set_ylim(signal_min*1.2, signal_max*1.2)
+    
+    plt.yticks(fontsize=20)
+    if model.segmentation_method.scaling:
+        plt.ylabel("Scaled difference vector", fontsize=35)
+    else:
+        plt.ylabel("Difference vector", fontsize=35)
+    
+    # plot reference point and thresholds
+    ref_point_value = model.segmentation_method.calculate_reference_point_value(signal, bkps, model.segmentation_method.reference_point)
+
+        
+    prev_bkp = 0
+    
+    # plot the means of each segment
+    for bkp in bkps:
+        segment = X_df[model.anomaly_detection_method.input][prev_bkp:bkp] # define a segment between two breakpoints
+        segment_mean = np.mean(segment)
+        
+        #If segment is classified as anomalous according to BS:
+        if model.threshold_function(segment_mean, model.segmentation_method.optimal_threshold):
+            plt.axhline(y=segment_mean, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='r', linestyle='-', linewidth=2, label = 'Mean over segment')
+            
+            plt.axhline(y=ref_point_value, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='orange', linestyle='-', linewidth=2, label = "BS Reference Point: " + model.segmentation_method.reference_point)
+            plt.axhline(y=ref_point_value + lower_threshold, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='black', linestyle='dashed', label = "BS threshold")
+            plt.axhline(y=ref_point_value + upper_threshold, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='black', linestyle='dashed')
+        else: #if segment is left to SPC anomaly detection
+            
+            SPC_threshold = model.anomaly_detection_method.optimal_threshold
+
+            if model.anomaly_detection_method.threshold_optimization_method == "DoubleThreshold":
+                SPC_lower_threshold = SPC_threshold[0]
+                SPC_upper_threshold = SPC_threshold[1]
+            else:
+                SPC_lower_threshold = -SPC_threshold
+                SPC_upper_threshold = SPC_threshold
+                
+            # fit Robust scaler on segment
+            scaler = RobustScaler(quantile_range=model.anomaly_detection_method.quantiles)
+            scaler.fit(segment.values.reshape(-1,1))
+            res = scaler.inverse_transform(np.array([SPC_lower_threshold, SPC_upper_threshold, 0]).reshape(-1,1))
+            plot_lower_threshold, plot_upper_threshold, plot_reference = res[0], res[1], res[2]
+            
+            # plot SPC middle:
+            plt.axhline(y=plot_reference, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='purple', linestyle='-', linewidth=2, label = "SPC segment median")
+
+            
+            # plot thresholds
+            threshold_handle = plt.axhline(y=plot_lower_threshold, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='black', linestyle='dotted', label = "SPC threshold")
+            plt.axhline(y=plot_upper_threshold, xmin=prev_bkp / len(X_df[model.anomaly_detection_method.input]), xmax=bkp/len(X_df[model.anomaly_detection_method.input]), color='black', linestyle='dotted')
+            
+            # helper to add red colour to legend
+            red_handle = mpatches.Patch(color='red', label='Predicted as outlier')
+            
+            plt.legend(handles=[threshold_handle, red_handle], fontsize=25, loc="upper left", bbox_to_anchor=(0, 1))
+        
+        prev_bkp = bkp
+    
+    # stop repeating labels for legend
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys(), fontsize=25, loc="upper left", bbox_to_anchor=(0, 1))
+    
+    
+    ticks = np.linspace(0,len(X_df["S"])-1, 10, dtype=int)
+
+    ax2 = fig.add_subplot(gs[4:6,:], sharex=ax1)
+    # # calculate y_scores
+    y_scores = scores
+    dates = plot_threshold_colour(np.array(y_scores)[:,1], np.array(X_df["M_TIMESTAMP"]), ax2, upper_threshold=SPC_threshold)
+    sns.set_theme()
+
+    # plot threshold on scores
+    threshold_handle = plt.axhline(y=SPC_threshold, color='black', linestyle='dashed', label = "threshold")
+
+    ax2.set_ylabel("Scores", fontsize=25)
+
+    # helper to add red colour to legend
+    red_handle = mpatches.Patch(color='red', label='Predicted as outlier')
+    
+    fig.tight_layout()    
+
+def plot_ARIMA(X_df, y_df, preds, file, model, model_string, show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot,scores):
+    """
+    Plot the isolation forest method
+
+    Parameters
+    ----------
+    X_df : dataframe
+        dataframe to be plotted
+    y_df : dataframe
+        dataframe containing the real labels
+    preds : dataframe
+        dataframe containing the predictions (0 or 1)
+    threshold : int
+        threshold on the scores that decides which values are classified as outliers
+    file : string
+        filename of the dataframe
+    model : a SaveableModel object
+        current model
+    model_string : string
+        string representation of the current model
+    show_IF_score : boolean
+        indicates whether to plot the Isolation Forest scores as well (with threshold and outlier colouring)
+    show_TP_FP_FN : boolean
+        indicates whether to colour the background according to TP,FP and FN
+    opacity_TP : float between 0 and 1
+        represents the opacity of the background colour for th TP,FP,FN colouring
+    pretty_plot : boolean
+        indicates whether to print the plot without title and predictions
+
+    """
+    threshold = model.optimal_threshold
+    
+    print(threshold)
+    
+    fig = plt.figure(figsize=(30,16))
+    
+    # decide plot size dependent on whether to include IF scores and predictions/title
+    if pretty_plot and show_IF_scores:
+        gs = GridSpec(4, 1, figure=fig)
+    elif pretty_plot and not show_IF_scores:
+        gs = GridSpec(2, 1, figure=fig)
+    elif not pretty_plot and not show_IF_scores:
+        plt.title("IF, " + model_string + "\n Predictions station: " + file, fontsize=60)
+        gs = GridSpec(3, 1, figure=fig)
+    else:
+        plt.title("IF, " + model_string + "\n Predictions station: " + file, fontsize=60)
+        gs = GridSpec(5, 1, figure=fig)
+    
+    # Diff plot:    
+    ax1 = fig.add_subplot(gs[:2,:])
+    
+    # colour background according to TP,FP,FN
+    if show_TP_FP_FN:
+        plot_TP_FP_FN(y_df, preds, opacity_TP, ax1)
+        
+    plot_diff(X_df)
+    sns.set_theme()
+
+    plt.yticks(fontsize=20)
+    plt.ylabel("Difference vector", fontsize=25)    
+    
+    # remove x-ticks if scores are also shown
+    if show_IF_scores:
+        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False) 
+    
+    # define dates already to allow plt.xticks to still function, even if show_IF_scores is False
+    dates = X_df["M_TIMESTAMP"]
+    
+    # scores plot, colouring the predicted outliers red
+    if show_IF_scores:
+        ax2 = fig.add_subplot(gs[2:4,:], sharex=ax1)
+        # calculate y_scores
+        y_scores = scores
+
+        dates = plot_threshold_colour(np.array(y_scores).squeeze(), np.array(X_df["M_TIMESTAMP"]), ax2, upper_threshold=threshold)
+        sns.set_theme()
+        
+        # plot threshold on scores
+        threshold_handle = plt.axhline(y=threshold, color='black', linestyle='dashed', label = "threshold")
+        
+        ax2.set_ylabel("Scores", fontsize=25)
+        
+        # helper to add red colour to legend
+        red_handle = mpatches.Patch(color='red', label='Predicted as outlier')
+        plt.legend(handles=[threshold_handle, red_handle], fontsize=20, loc="lower left", bbox_to_anchor=(1.01, 0))
+    
+    # Predictions plot
+    if not pretty_plot:
+        ax3 = fig.add_subplot(gs[-1,:],sharex=ax1)
+        plot_labels(preds, label="label")
+        sns.set_theme()
+        
+        ax3.set_ylabel("Predictions", fontsize=25)
+    
+    ticks = np.linspace(0,len(X_df)-1, 10, dtype=int)
+    plt.xticks(ticks=ticks, labels=pd.Series(dates).iloc[ticks], rotation=45, fontsize=20)
+    plt.xlim((0, len(X_df)))
+    plt.xlabel("Date", fontsize=25)
+    
+    fig.tight_layout()
+
+    
+def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, which_stations = None, n_stations = 3, scores = None):
     """
     Plot the predictions made by a specific model in a way that makes sense for the method
 
@@ -689,14 +928,16 @@ def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores
     for station in which_stations:
         X_df = X_dfs[station]
         y_df = y_dfs[station]
+        if scores != None:
+            score = scores[station]
         y_pred_df = predictions[station]
         file = dfs_files[station]
         
-        plot_single_prediction(X_df, y_df, y_pred_df, file, model, show_IF_scores = show_IF_scores, show_TP_FP_FN = show_TP_FP_FN, opacity_TP = opacity_TP, pretty_plot = pretty_plot)
+        plot_single_prediction(X_df, y_df, y_pred_df, file, model, show_IF_scores = show_IF_scores, show_TP_FP_FN = show_TP_FP_FN, opacity_TP = opacity_TP, pretty_plot = pretty_plot, scores=score)
         plt.show()
         
         
-def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = False):
+def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, scores=None):
 
     
     # find model used
@@ -724,12 +965,21 @@ def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores
             if model.scaling:
                 X_df = scale_diff_data(X_df, model.quantiles)
             plot_IF(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot)
-            
+        
+        case "SingleThresholdARIMA" :
+            X_df = scale_diff_data(X_df, model.quantiles)
+            plot_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot, scores)
+                        
         case _ :
             if "Sequential" in model.method_name :
-                if model.segmentation_method.scaling:
+                if "ARIMA" in model.method_name:
                     X_df = scale_diff_data(X_df, model.segmentation_method.quantiles)
-                plot_Sequential_BS_SPC(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP)
+                    plot_Sequential_BS_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP, scores)
+                    
+                else:
+                    if model.segmentation_method.scaling:
+                        X_df = scale_diff_data(X_df, model.segmentation_method.quantiles)
+                    plot_Sequential_BS_SPC(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP)
             else:
                 raise ValueError(model.method_name + "is not a recognized method to be plotted")
 def scale_diff_data(df, quantiles):
@@ -751,10 +1001,12 @@ def scale_diff_data(df, quantiles):
     """
     scaler = RobustScaler(quantile_range=quantiles)
     scaled_diff = pd.DataFrame(scaler.fit_transform(df["diff"].values.reshape(-1,1)))
+    scaled_S = pd.DataFrame(scaler.fit_transform(df["S"].values.reshape(-1,1)))
     
     # make copy to not change original df
     df_copy = df.copy()
     
     df_copy["diff"] = scaled_diff
+    df_copy["S"] = scaled_S
     return df_copy
     
