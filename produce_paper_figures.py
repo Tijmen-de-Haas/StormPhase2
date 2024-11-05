@@ -39,6 +39,8 @@ from src.methods import SequentialEnsemble
 
 sns.set()
 
+
+
 #%% Data loading
 
 dataset = "OS_data" #alternatively: route_data
@@ -148,15 +150,15 @@ plt.axhline(y=-max_capacity, color='black', linestyle='dotted', linewidth=4)
 
 existing_handles, _ = ax.get_legend_handles_labels()
 # plt.legend(handles=existing_handles+[unused_capacity_handle], fontsize=30)
-plt.legend(handles=existing_handles+[unused_capacity_handle, redundant_capacity_handle], fontsize=30)
+plt.legend(handles=existing_handles+[unused_capacity_handle, redundant_capacity_handle], fontsize=40)
 # plt.legend(fontsize=30)
 
 
-plt.yticks(fontsize=30)
-plt.ylabel("load (MW)", fontsize=30)
+plt.yticks(fontsize=40)
+plt.ylabel("load (MW)", fontsize=40)
 
 ticks = np.linspace(0,len(X_df["S_original"])-1, n_xlabels, dtype=int)
-plt.xticks(ticks=ticks, labels=X_df["M_TIMESTAMP"].iloc[ticks], rotation=45, fontsize=30)
+plt.xticks(ticks=ticks, labels=X_df["M_TIMESTAMP"].iloc[ticks], rotation=45, fontsize=40)
 plt.xlim((0, len(X_df)))
 
 plt.ylim((-max_capacity-5000/1000, max_capacity+5000/1000))
@@ -174,14 +176,15 @@ no_switch_data = np.repeat(5,1000)
 negative_switch_data = np.concatenate([np.repeat(5,500), np.repeat(1,500)])
 positive_switch_data = np.concatenate([np.repeat(5,500), np.repeat(9,500)])
 
+
 plt.figure(figsize=(6,4))
 plt.plot(no_switch_data,  "black")
-plt.xlabel("time", fontsize=20)
-plt.ylabel("S", fontsize=20)
+plt.xlabel("time", fontsize=30)
+plt.ylabel("S", fontsize=30)
 plt.xlim(0,1000)
 plt.ylim(0,10)
-plt.yticks(fontsize=20)
-plt.xticks(fontsize=20)
+plt.yticks(fontsize=30)
+plt.xticks(fontsize=30)
 plt.grid(False)
 plt.tight_layout()
 
@@ -191,12 +194,12 @@ plt.show()
 
 plt.figure(figsize=(6,4))
 plt.plot(negative_switch_data,  "black")
-plt.xlabel("time", fontsize=20)
-plt.ylabel("S", fontsize=20)
+plt.xlabel("time", fontsize=30)
+plt.ylabel("S", fontsize=30)
 plt.xlim(0,1000)
 plt.ylim(0,10)
-plt.yticks(fontsize=20)
-plt.xticks(fontsize=20)
+plt.yticks(fontsize=30)
+plt.xticks(fontsize=30)
 plt.grid(False)
 plt.tight_layout()
 
@@ -206,12 +209,12 @@ plt.show()
 
 plt.figure(figsize=(6,4))
 plt.plot(positive_switch_data,  "black")
-plt.xlabel("time", fontsize=20)
-plt.ylabel("S", fontsize=20)
+plt.xlabel("time", fontsize=30)
+plt.ylabel("S", fontsize=30)
 plt.xlim(0,1000)
 plt.ylim(0,10)
-plt.yticks(fontsize=20)
-plt.xticks(fontsize=20)
+plt.yticks(fontsize=30)
+plt.xticks(fontsize=30)
 plt.grid(False)
 plt.tight_layout()
 
@@ -291,16 +294,16 @@ incorrect_capacity_handle = mpl.patches.Patch(color='r', alpha=opacity, label='I
 
 existing_handles, _ = ax.get_legend_handles_labels()
 # plt.legend(handles=existing_handles+[unused_capacity_handle], fontsize=30)
-plt.legend(handles=existing_handles+[incorrect_capacity_handle], fontsize=30)
+plt.legend(handles=existing_handles+[incorrect_capacity_handle], fontsize=40)
 
 #plt.legend(fontsize=30)
 
 
-plt.yticks(fontsize=30)
-plt.ylabel("load (MW)", fontsize=30)
+plt.yticks(fontsize=40)
+plt.ylabel("load (MW)", fontsize=40)
 
 ticks = np.linspace(0,len(X_df["S_original"])-1, n_xlabels, dtype=int)
-plt.xticks(ticks=ticks, labels=X_df["M_TIMESTAMP"].iloc[ticks], rotation=45, fontsize=30)
+plt.xticks(ticks=ticks, labels=X_df["M_TIMESTAMP"].iloc[ticks], rotation=45, fontsize=40)
 plt.xlim((0, len(X_df)))
 
 #plt.ylim((-max_capacity-5000/1000, max_capacity+5000/1000))
@@ -409,7 +412,7 @@ plt.axvline(x = model.optimal_threshold, color = sns.color_palette()[3], linesty
 
 plt.legend()
 plt.xlabel(r"Threshold ($\theta$)")
-plt.ylabel(r"F$1.5_{average}$")
+plt.ylabel(r"F1.5")
 plt.xlim((0, 4)) #hardcoded
 plt.savefig(os.path.join(figure_folder, "threshold_optimization.pdf"), format="pdf")
 plt.savefig(os.path.join(figure_folder, "threshold_optimization.png"), format="png")
@@ -514,10 +517,15 @@ best_hyperparameters = {}
 best_preprocessing_hyperparameters = {}
 best_models = {}
 
+PRFAUC_table_per_method = {}
 PRF_mean_table_per_method = {}
 PRF_std_table_per_method = {}
 avg_fbeta_mean_per_method = {}
 avg_fbeta_std_per_method = {}
+avg_precision_mean_per_method = {}
+avg_precision_std_per_method = {}
+avg_recall_mean_per_method = {}
+avg_recall_std_per_method = {}
 
 validation_fbeta_per_method = {}
 
@@ -545,26 +553,36 @@ for method_name in methods:
     model = methods[method_name](model_folder, preprocessing_hash, **hyperparameters)
     best_models[method_name] = model
 
-
+    PRFAUC_table_path = os.path.join(metric_folder, "PRFAUC_table", which_split, method_name, preprocessing_hash)
     PRF_mean_table_path = os.path.join(metric_folder, "PRF_mean_table", which_split, method_name, preprocessing_hash)
     PRF_std_table_path = os.path.join(metric_folder, "PRF_std_table", which_split, method_name, preprocessing_hash)
     avg_fbeta_mean_path = os.path.join(metric_folder, "bootstrap_mean_F"+str(beta), which_split, method_name, preprocessing_hash)
     avg_fbeta_std_path = os.path.join(metric_folder, "bootstrap_std_F"+str(beta), which_split, method_name, preprocessing_hash)
     minmax_stats_path = os.path.join(metric_folder, "minmax_stats", which_split, method_name, preprocessing_hash)
+    avg_precision_mean_path = os.path.join(metric_folder, "bootstrap_mean_precision", which_split, method_name, preprocessing_hash)
+    avg_precision_std_path = os.path.join(metric_folder, "bootstrap_std_precision", which_split, method_name, preprocessing_hash)
+    avg_recall_mean_path = os.path.join(metric_folder, "bootstrap_mean_recall", which_split, method_name, preprocessing_hash)
+    avg_recall_std_path = os.path.join(metric_folder, "bootstrap_std_recall", which_split, method_name, preprocessing_hash)
     
+    PRFAUC_table_per_method[method_name] = load_table(PRFAUC_table_path, hyperparameter_hash)
     PRF_mean_table_per_method[method_name] = load_table(PRF_mean_table_path, hyperparameter_hash)
     PRF_std_table_per_method[method_name] = load_table(PRF_std_table_path, hyperparameter_hash)
     avg_fbeta_mean_per_method[method_name] = load_metric(avg_fbeta_mean_path, hyperparameter_hash)
     avg_fbeta_std_per_method[method_name] = load_metric(avg_fbeta_std_path, hyperparameter_hash)
     minmax_stats_per_method[method_name] = load_minmax_stats(minmax_stats_path, hyperparameter_hash)
+    avg_precision_mean_per_method[method_name] = load_metric(avg_precision_mean_path, hyperparameter_hash)
+    avg_precision_std_per_method[method_name] = load_metric(avg_precision_std_path, hyperparameter_hash)
+    avg_recall_mean_per_method[method_name] = load_metric(avg_recall_mean_path, hyperparameter_hash)
+    avg_recall_std_per_method[method_name] = load_metric(avg_recall_std_path, hyperparameter_hash)
+    
     
     validation_fbeta_per_method[method_name] = validation_metric
     
 #Make plot of average F score
 ordering = {k:i for i, k in enumerate(avg_fbeta_mean_per_method)}
 category_names = {method_name:"Average" for method_name in methods}
-bootstrapped_Fscore = pd.concat([pd.Series(avg_fbeta_mean_per_method), pd.Series(avg_fbeta_std_per_method), pd.Series(method_groups), pd.Series(validation_fbeta_per_method), pd.Series(ordering), pd.Series(category_names)], axis=1)
-bootstrapped_Fscore.columns = ["F1.5 average", "F1.5 stdev", "Method class", "Validation F1.5", "Ordering", "Length category"]
+bootstrapped_Fscore = pd.concat([pd.Series(avg_fbeta_mean_per_method), pd.Series(avg_fbeta_std_per_method), pd.Series(avg_precision_mean_per_method), pd.Series(avg_precision_std_per_method), pd.Series(avg_recall_mean_per_method), pd.Series(avg_recall_std_per_method) , pd.Series(method_groups), pd.Series(validation_fbeta_per_method), pd.Series(ordering), pd.Series(category_names)], axis=1)
+bootstrapped_Fscore.columns = ["F1.5 average", "F1.5 stdev", "Precision average", "Precision stdev", "Recall average", "Recall stdev", "Method class", "Validation F1.5", "Ordering", "Length category"]
 
 bootstrapped_Fscore.rename(index=name_abbreviations, inplace=True)
 
@@ -588,16 +606,22 @@ plt.savefig(os.path.join(figure_folder, "bootstrap_results.png"), format="png")
 plt.show()
 
 
-#%%Make plot of F score per category:
+#%%Make plot of F score and AUC per category:
 base_plot_df = pd.DataFrame()
 for cutoffs in all_cutoffs:
     category = str(cutoffs)
+    aucs = {method_name:PRFAUC_table_per_method[method_name]["ROC/AUC"].loc[str(category)] for method_name in methods}
     fbetas = {method_name:PRF_mean_table_per_method[method_name]["F1.5"].loc[str(category)] for method_name in methods}
     fbeta_stds = {method_name:PRF_std_table_per_method[method_name]["F1.5"].loc[str(category)] for method_name in methods}
+    recalls = {method_name:PRF_mean_table_per_method[method_name]["recall"].loc[str(category)] for method_name in methods}
+    recall_stds = {method_name:PRF_std_table_per_method[method_name]["recall"].loc[str(category)] for method_name in methods}
+    precisions = {method_name:PRF_mean_table_per_method[method_name]["precision"].loc[str(category)] for method_name in methods}
+    precision_stds = {method_name:PRF_std_table_per_method[method_name]["precision"].loc[str(category)] for method_name in methods}
+    
     category_names = {method_name:cutoff_replacement_dict[category] for method_name in methods}
     ordering = {k:i for i, k in enumerate(avg_fbeta_mean_per_method)}
-    bootstrapped_Fscore = pd.concat([pd.Series(fbetas), pd.Series(fbeta_stds), pd.Series(method_groups), pd.Series(validation_fbeta_per_method), pd.Series(ordering), pd.Series(category_names)], axis=1)
-    bootstrapped_Fscore.columns = ["F1.5 average", "F1.5 stdev", "Method class", "Validation F1.5", "Ordering", "Length category"]
+    bootstrapped_Fscore = pd.concat([pd.Series(aucs), pd.Series(fbetas), pd.Series(fbeta_stds), pd.Series(recalls), pd.Series(recall_stds), pd.Series(precisions), pd.Series(precision_stds), pd.Series(method_groups), pd.Series(validation_fbeta_per_method), pd.Series(ordering), pd.Series(category_names)], axis=1)
+    bootstrapped_Fscore.columns = ["AUC", "F1.5 average", "F1.5 stdev", "Recall average", "Recall stdev", "Precision average", "Precision stdev", "Method class", "Validation F1.5", "Ordering", "Length category"]
     
     bootstrapped_Fscore.rename(index=name_abbreviations, inplace=True)
     
@@ -608,11 +632,34 @@ for cutoffs in all_cutoffs:
     max_rows.sort_values(by="Ordering", inplace=True)
 
     base_plot_df = pd.concat([base_plot_df, max_rows])
-base_plot_df = pd.concat([base_plot_df, average_max_rows])
+
+F_score_base_plot_df = pd.concat([base_plot_df, average_max_rows])
 
 
 plt.figure(figsize=(10,6))
-sns.barplot(data=base_plot_df, x=base_plot_df["Method class"], y=base_plot_df['F1.5 average'], hue="Length category")
+sns.barplot(data=base_plot_df, x=base_plot_df["Method class"], y=base_plot_df['AUC'], hue="Length category")
+
+ax = plt.gca()
+bars = ax.patches
+
+plt.xticks(rotation=90)
+
+# Adding labels and title
+plt.xlabel('Method')
+plt.ylabel('AUC-ROC')
+plt.tight_layout()
+
+plt.legend()
+plt.savefig(os.path.join(figure_folder, "AUC_results_per_category.pdf"), format="pdf")
+plt.savefig(os.path.join(figure_folder, "AUC_results_per_category.png"), format="png")
+
+
+
+plt.show()
+
+
+plt.figure(figsize=(10,6))
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['F1.5 average'], hue="Length category")
 
 ax = plt.gca()
 bars = ax.patches
@@ -620,7 +667,7 @@ bars = ax.patches
 # Calculate the x-values of the center of each bar
 bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
 #Only get the first X bar centers, after that are dummy values
-plt.errorbar(x=bar_centers[:len(base_plot_df['F1.5 average'])], y=base_plot_df['F1.5 average'], yerr=base_plot_df["F1.5 stdev"], fmt="none", c="k", capsize=4)
+plt.errorbar(x=bar_centers[:len(F_score_base_plot_df['F1.5 average'])], y=F_score_base_plot_df['F1.5 average'], yerr=F_score_base_plot_df["F1.5 stdev"], fmt="none", c="k", capsize=4)
 
 
 plt.xticks(rotation=90)
@@ -632,34 +679,12 @@ plt.tight_layout()
 plt.savefig(os.path.join(figure_folder, "bootstrap_results_per_category.pdf"), format="pdf")
 plt.savefig(os.path.join(figure_folder, "bootstrap_results_per_category.png"), format="png")
 
+
+
 plt.show()
 
-#%% Plot recall per category:
-    
-base_plot_df = pd.DataFrame()
-for cutoffs in all_cutoffs:
-    category = str(cutoffs)
-    recalls = {method_name:PRF_mean_table_per_method[method_name]["recall"].loc[str(category)] for method_name in methods}
-    recall_stds = {method_name:PRF_std_table_per_method[method_name]["recall"].loc[str(category)] for method_name in methods}
-    category_names = {method_name:cutoff_replacement_dict[category] for method_name in methods}
-    ordering = {k:i for i, k in enumerate(avg_fbeta_mean_per_method)}
-    bootstrapped_Fscore = pd.concat([pd.Series(recalls), pd.Series(recall_stds), pd.Series(method_groups), pd.Series(validation_fbeta_per_method), pd.Series(ordering), pd.Series(category_names)], axis=1)
-    bootstrapped_Fscore.columns = ["Recall average", "Recall stdev", "Method class", "Validation F1.5", "Ordering", "Length category"]
-    
-    bootstrapped_Fscore.rename(index=name_abbreviations, inplace=True)
-    
-    bootstrapped_Fscore = bootstrapped_Fscore.dropna(subset=['Validation F1.5'])
-    idx_max = bootstrapped_Fscore.groupby('Method class')['Validation F1.5'].idxmax()
-    # Select the rows with the maximal 'Validation F1.5' for each 'Method class'
-    max_rows = bootstrapped_Fscore.loc[idx_max]
-    max_rows.sort_values(by="Ordering", inplace=True)
-
-    base_plot_df = pd.concat([base_plot_df, max_rows])
-#base_plot_df = pd.concat([base_plot_df, average_max_rows])
-
-
 plt.figure(figsize=(10,6))
-sns.barplot(data=base_plot_df, x=base_plot_df["Method class"], y=base_plot_df['Recall average'], hue="Length category")
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['Recall average'], hue="Length category")
 
 ax = plt.gca()
 bars = ax.patches
@@ -667,7 +692,7 @@ bars = ax.patches
 # Calculate the x-values of the center of each bar
 bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
 #Only get the first X bar centers, after that are dummy values
-plt.errorbar(x=bar_centers[:len(base_plot_df['Recall average'])], y=base_plot_df['Recall average'], yerr=base_plot_df["Recall stdev"], fmt="none", c="k", capsize=4)
+plt.errorbar(x=bar_centers[:len(F_score_base_plot_df['Recall average'])], y=F_score_base_plot_df['Recall average'], yerr=F_score_base_plot_df["Recall stdev"], fmt="none", c="k", capsize=4)
 
 
 plt.xticks(rotation=90)
@@ -681,6 +706,92 @@ plt.savefig(os.path.join(figure_folder, "recall_bootstrap_results_per_category.p
 
 plt.show()
 
+plt.figure(figsize=(10,6))
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['Precision average'], hue="Length category")
+
+ax = plt.gca()
+bars = ax.patches
+
+# Calculate the x-values of the center of each bar
+bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
+#Only get the first X bar centers, after that are dummy values
+plt.errorbar(x=bar_centers[:len(F_score_base_plot_df['Precision average'])], y=F_score_base_plot_df['Precision average'], yerr=F_score_base_plot_df["Precision stdev"], fmt="none", c="k", capsize=4)
+
+
+plt.xticks(rotation=90)
+
+# Adding labels and title
+plt.xlabel('Method')
+plt.ylabel('Precision (Average)')
+plt.tight_layout()
+plt.savefig(os.path.join(figure_folder, "precision_bootstrap_results_per_category.pdf"), format="pdf")
+plt.savefig(os.path.join(figure_folder, "precision_bootstrap_results_per_category.png"), format="png")
+
+plt.show()
+
+#%% combine previous plots:
+
+
+fig, axes = plt.subplots(3, 1, figsize=(12, 14.3), sharex=True)
+
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['F1.5 average'], hue="Length category", ax=axes[0])
+
+bars = axes[0].patches
+
+# Calculate the x-values of the center of each bar
+bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
+#Only get the first X bar centers, after that are dummy values
+
+axes[0].errorbar(x=bar_centers[:len(F_score_base_plot_df['F1.5 average'])], y=F_score_base_plot_df['F1.5 average'], yerr=F_score_base_plot_df["F1.5 stdev"], fmt="none", c="k", capsize=4)
+axes[0].set_ylabel('F1.5 Score (Average)', fontsize=18)
+
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['Recall average'], hue="Length category", ax=axes[1])
+
+axes[0].tick_params(axis='y', labelsize=18)
+
+bars = axes[1].patches
+
+# Calculate the x-values of the center of each bar
+bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
+#Only get the first X bar centers, after that are dummy values
+
+axes[1].errorbar(x=bar_centers[:len(F_score_base_plot_df['Recall average'])], y=F_score_base_plot_df['Recall average'], yerr=F_score_base_plot_df["Recall stdev"], fmt="none", c="k", capsize=4)
+axes[1].set_ylabel('Recall (Average)', fontsize=18)
+
+sns.barplot(data=F_score_base_plot_df, x=F_score_base_plot_df["Method class"], y=F_score_base_plot_df['Precision average'], hue="Length category", ax=axes[2])
+
+axes[1].tick_params(axis='y', labelsize=18)
+
+bars = axes[2].patches
+
+# Calculate the x-values of the center of each bar
+bar_centers = [(bar.get_x() + bar.get_width() / 2) for bar in bars]
+#Only get the first X bar centers, after that are dummy values
+
+axes[2].errorbar(x=bar_centers[:len(F_score_base_plot_df['Precision average'])], y=F_score_base_plot_df['Precision average'], yerr=F_score_base_plot_df["Precision stdev"], fmt="none", c="k", capsize=4)
+axes[2].set_ylabel('Precision (Average)', fontsize=18)
+
+# Rotate x-axis labels and add a common x-axis label
+#plt.setp(axes, xticks=range(len(base_plot_df["Method class"].unique())), xticklabels=base_plot_df["Method class"].unique(), xticksrotation=90)
+axes[2].set_xticks(range(len(F_score_base_plot_df["Method class"].unique())))
+axes[2].set_xticklabels(F_score_base_plot_df["Method class"].unique(), rotation=90, fontsize=18)
+axes[2].set_xlabel("Method Class", fontsize=25)
+
+axes[2].tick_params(axis='y', labelsize=18)
+
+fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+# Move the legend to the top of the figure
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc='upper center', ncol=len(F_score_base_plot_df["Length category"].unique()), bbox_to_anchor=(0.5, 0.98), fontsize=20)
+axes[0].get_legend().remove()
+axes[1].get_legend().remove()
+axes[2].get_legend().remove()
+
+plt.savefig(os.path.join(figure_folder, "combined_bootstrap_results_per_category.pdf"), format="pdf")
+plt.savefig(os.path.join(figure_folder, "combined_bootstrap_results_per_category.png"), format="png")
+
+plt.show()
 #%% visualize minmax stats
 from bidict import bidict
 #subset dict so we only get stats for best performing method on validation:
@@ -721,37 +832,49 @@ fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 # Plotting each dataframe on a separate subplot
 
 #For no filtering plot we can use whatever method, as unfiltered mins and maxs are the same
-sns.scatterplot(data=Seq_best_df, x="X_maxs", y="X_maxs_no_filter", ax=axes[0, 0])
+sns.scatterplot(data=Seq_best_df, x="X_maxs", y="X_maxs_no_filter", ax=axes[0, 0], s=60)
 axes[0, 0].set_xlim(left=0)
 axes[0, 0].set_ylim(bottom=-1)
-axes[0, 0].set_xlabel("Ground truth maximum load (MW)")
-axes[0, 0].set_ylabel("Predicted maximum load (MW)")
+axes[0, 0].set_xlabel("Ground truth maximum load (MW)", fontsize=15)
+axes[0, 0].set_ylabel("Predicted maximum load (MW)", fontsize=15)
 axes[0, 0].set_aspect('equal', adjustable='box')
-axes[0, 0].set_title("Unfiltered")
+axes[0, 0].set_title("Unfiltered", fontsize=18)
 
-sns.scatterplot(data=BS_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[0, 1])
+axes[0, 0].tick_params(axis='x', labelsize=15)
+axes[0, 0].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=BS_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[0, 1], s=60)
 axes[0, 1].set_xlim(left=0)
 axes[0, 1].set_ylim(bottom=-1)
-axes[0, 1].set_xlabel("Ground truth maximum load (MW)")
-axes[0, 1].set_ylabel("Predicted maximum load (MW)")
+axes[0, 1].set_xlabel("Ground truth maximum load (MW)", fontsize=15)
+axes[0, 1].set_ylabel("Predicted maximum load (MW)", fontsize=15)
 axes[0, 1].set_aspect('equal', adjustable='box')
-axes[0, 1].set_title("BS")
+axes[0, 1].set_title("BS", fontsize=18)
 
-sns.scatterplot(data=SPC_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[1, 0])
+axes[0, 1].tick_params(axis='x', labelsize=15)
+axes[0, 1].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=SPC_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[1, 0], s=60)
 axes[1, 0].set_xlim(left=0)
 axes[1, 0].set_ylim(bottom=-1)
-axes[1, 0].set_xlabel("Ground truth maximum load (MW)")
-axes[1, 0].set_ylabel("Predicted maximum load (MW)")
+axes[1, 0].set_xlabel("Ground truth maximum load (MW)", fontsize=15)
+axes[1, 0].set_ylabel("Predicted maximum load (MW)", fontsize=15)
 axes[1, 0].set_aspect('equal', adjustable='box')
-axes[1, 0].set_title("SPC")
+axes[1, 0].set_title("SPC", fontsize=18)
 
-sns.scatterplot(data=Seq_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[1, 1])
+axes[1, 0].tick_params(axis='x', labelsize=15)
+axes[1, 0].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=Seq_best_df, x="X_maxs", y="X_pred_maxs", ax=axes[1, 1], s=60)
 axes[1, 1].set_xlim(left=0)
 axes[1, 1].set_ylim(bottom=-1)
-axes[1, 1].set_xlabel("Ground truth maximum load (MW)")
-axes[1, 1].set_ylabel("Predicted maximum load (MW)")
+axes[1, 1].set_xlabel("Ground truth maximum load (MW)", fontsize=15)
+axes[1, 1].set_ylabel("Predicted maximum load (MW)", fontsize=15)
 axes[1, 1].set_aspect('equal', adjustable='box')
-axes[1, 1].set_title("Seq BS+SPC")
+axes[1, 1].set_title("Seq BS+SPC", fontsize=18)
+
+axes[1, 1].tick_params(axis='x', labelsize=15)
+axes[1, 1].tick_params(axis='y', labelsize=15)
 
 
 plt.tight_layout()
@@ -776,38 +899,49 @@ fig, axes = plt.subplots(2, 2, figsize=(10, 10))
 # Plotting each dataframe on a separate subplot
 
 #For no filtering plot we can use whatever method, as unfiltered mins and maxs are the same
-sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_mins_no_filter", ax=axes[0, 0])
+sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_mins_no_filter", ax=axes[0, 0], s=60)
 axes[0, 0].set_xlim(right=0)
 axes[0, 0].set_ylim(top=1)
-axes[0, 0].set_xlabel("Ground truth minimum load (MW)")
-axes[0, 0].set_ylabel("Predicted minimum load (MW)")
+axes[0, 0].set_xlabel("Ground truth minimum load (MW)", fontsize=15)
+axes[0, 0].set_ylabel("Predicted minimum load (MW)", fontsize=15)
 axes[0, 0].set_aspect('equal', adjustable='box')
-axes[0, 0].set_title("Unfiltered")
+axes[0, 0].set_title("Unfiltered", fontsize=18)
 
-sns.scatterplot(data=BS_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[0, 1])
+axes[0, 0].tick_params(axis='x', labelsize=15)
+axes[0, 0].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[0, 1], s=60)
 axes[0, 1].set_xlim(right=0)
 axes[0, 1].set_ylim(top=1)
-axes[0, 1].set_xlabel("Ground truth minimum load (MW)")
-axes[0, 1].set_ylabel("Predicted minimum load (MW)")
+axes[0, 1].set_xlabel("Ground truth minimum load (MW)", fontsize=15)
+axes[0, 1].set_ylabel("Predicted minimum load (MW)", fontsize=15)
 axes[0, 1].set_aspect('equal', adjustable='box')
-axes[0, 1].set_title("BS")
+axes[0, 1].set_title("BS", fontsize=18)
 
-sns.scatterplot(data=SPC_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[1, 0])
+axes[0, 1].tick_params(axis='x', labelsize=15)
+axes[0, 1].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[1, 0], s=60)
 axes[1, 0].set_xlim(right=0)
 axes[1, 0].set_ylim(top=1)
-axes[1, 0].set_xlabel("Ground truth minimum load (MW)")
-axes[1, 0].set_ylabel("Predicted minimum load (MW)")
+axes[1, 0].set_xlabel("Ground truth minimum load (MW)", fontsize=15)
+axes[1, 0].set_ylabel("Predicted minimum load (MW)", fontsize=15)
 axes[1, 0].set_aspect('equal', adjustable='box')
-axes[1, 0].set_title("SPC")
+axes[1, 0].set_title("SPC", fontsize=18)
 
-sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[1, 1])
+axes[1, 0].tick_params(axis='x', labelsize=15)
+axes[1, 0].tick_params(axis='y', labelsize=15)
+
+sns.scatterplot(data=Seq_min_best_df, x="X_mins", y="X_pred_mins", ax=axes[1, 1], s=60)
 axes[1, 1].set_xlim(right=0)
 axes[1, 1].set_ylim(top=1)
-axes[1, 1].set_xlabel("Ground truth minimum load (MW)")
-axes[1, 1].set_ylabel("Predicted minimum load (MW)")
+axes[1, 1].set_xlabel("Ground truth minimum load (MW)", fontsize=15)
+axes[1, 1].set_ylabel("Predicted minimum load (MW)", fontsize=15)
 axes[1, 1].set_aspect('equal', adjustable='box')
-axes[1, 1].set_title("Seq BS+SPC")
+axes[1, 1].set_title("Seq BS+SPC", fontsize=18)
 
+axes[1, 1].tick_params(axis='x', labelsize=15)
+axes[1, 1].tick_params(axis='y', labelsize=15)
 
 plt.tight_layout()
 plt.savefig(os.path.join(figure_folder, "minimum_load_estimates.png"), format="png")
