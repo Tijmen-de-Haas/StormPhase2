@@ -440,7 +440,7 @@ class StatisticalProcessControl(ScoreCalculator):
         return model_string
     
 
-class ARIMAProcessControl(ScoreCalculator):
+class ARIMA_model(ScoreCalculator):
     
     def __init__(self, p=1, d=1, q=1, input='S', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
@@ -466,7 +466,8 @@ class ARIMAProcessControl(ScoreCalculator):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
-        hyperparameter_hash = self.get_hyperparameter_hash()  
+        hyperparameter_hash = self.get_hyperparameter_hash() 
+        print(len(y_dfs), len(y_dfs[0]) ) 
      
         
         scores_folder = os.path.join(base_scores_path, score_calculator_name, hyperparameter_hash)
@@ -538,46 +539,42 @@ class ARIMAProcessControl(ScoreCalculator):
                             "input": self.input}).encode("utf-8")    
         return model_string
 
-class ARIMAbreak(ScoreCalculator):
+class SARIMAX_model(ScoreCalculator):
     
-    def __init__(self, p=1, d=1, q=1, input='S', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
+    def __init__(self, p=1, d=1, q=1, seasonal=False, exog=False, used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
-        self.score_calculation_method_name = "ARIMAbreak"
+        self.score_calculation_method_name = "SARIMAX"
         self.order = (p,d,q)
         self.used_cutoffs = used_cutoffs
         self.quantiles = quantiles
-        self.input = input
+        if seasonal:
+            self.seasonal_order=(p,d,q,96)
+        else:
+            self.seasonal_order=(0,0,0,0)
+        self.exog = exog
+        
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
         warnings.filterwarnings("ignore", category=UserWarning) 
 
     def process_dataframe(self, X_df):
-        length = 0
-        for segment in X_df:
-            length+= len(segment)
-        scores_total = np.zeros(length)
-
-        start = 0 
-        for segment in X_df:
-           
-            scaler = RobustScaler(quantile_range=self.quantiles)
-
-            x_scaled = scaler.fit_transform(segment[[self.input]].values.reshape(-1, 1))  
-            arima_model = ARIMA(x_scaled, order=self.order)
-            arima_fit = arima_model.fit()
-            fitted_vals = arima_fit.fittedvalues
-
-            scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
-            scores_total[start:(len(scores)+start)] = scores
-            start += len(scores)
- 
-        return pd.DataFrame(scores_total)
+        scaler = RobustScaler(quantile_range=self.quantiles)
+        x_scaled = scaler.fit_transform(X_df[['diff']].values.reshape(-1, 1))
+        if self.exog:
+            exo_scaled = scaler.fit_transform(X_df[['S']].values.reshape(-1, 1))  
+            arima_model = SARIMAX(x_scaled, exog=exo_scaled, order=self.order, seasonal_order=self.seasonal_order)
+        else:
+            arima_model = SARIMAX(x_scaled, order=self.order, seasonal_order=self.seasonal_order)
+        arima_fit = arima_model.fit(disp=False)
+        fitted_vals = arima_fit.fittedvalues
+        
+        scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
+        return pd.DataFrame(scores)
 
     def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
-        hyperparameter_hash = self.get_hyperparameter_hash()  
-     
+        hyperparameter_hash = self.get_hyperparameter_hash()      
         
         scores_folder = os.path.join(base_scores_path, score_calculator_name, hyperparameter_hash)
         predictions_folder = os.path.join(base_predictions_path, model_name, hyperparameter_hash)
@@ -645,7 +642,8 @@ class ARIMAbreak(ScoreCalculator):
     def get_model_string(self):
         model_string = str({"quantiles":self.quantiles,
                             "order": self.order,
-                            "input": self.input}).encode("utf-8")    
+                            "seasonal": self.seasonal_order,
+                            "exog": self.exog}).encode("utf-8")    
         return model_string
 
 class IsolationForest(ScoreCalculator):
@@ -1137,7 +1135,7 @@ class SaveableModel(ABC):
         self.used_cutoffs = used_cutoffs    
        
 
-class SingleThresholdARIMA(ARIMAProcessControl, SingleThresholdMethod, SaveableModel):
+class SingleThresholdARIMA(ARIMA_model, SingleThresholdMethod, SaveableModel):
     
     def __init__(self, base_models_path, preprocessing_hash, score_function=None, score_function_kwargs=None, **params):
         super().__init__(**params)
@@ -1146,12 +1144,12 @@ class SingleThresholdARIMA(ARIMAProcessControl, SingleThresholdMethod, SaveableM
         SaveableModel.__init__(self, base_models_path, preprocessing_hash)   
 
 
-class SingleThresholdARIMAbreak(ARIMAbreak, SingleThresholdMethod, SaveableModel):
+class SingleThresholdSARIMAX(SARIMAX_model, SingleThresholdMethod, SaveableModel):
     
     def __init__(self, base_models_path, preprocessing_hash, score_function=None, score_function_kwargs=None, **params):
         super().__init__(**params)
         SingleThresholdMethod.__init__(self, score_function=score_function, score_function_kwargs=score_function_kwargs)
-        self.method_name = "SingleThresholdARIMAbreak"
+        self.method_name = "SingleThresholdSARIMAX"
         SaveableModel.__init__(self, base_models_path, preprocessing_hash)   
 
 class SingleThresholdStatisticalProcessControl(StatisticalProcessControl, SingleThresholdMethod, SaveableModel):
@@ -1410,187 +1408,6 @@ class SequentialEnsemble(SaveableEnsemble):
             model.report_thresholds()
 
 
-class SequentialEnsemblePerBreak(SaveableEnsemble):
-    
-    def __init__(self, base_models_path, preprocessing_hash, segmentation_method, anomaly_detection_method, method_hyperparameter_dict_list, cutoffs_per_method):
-
-        self.is_ensemble = True
-        
-        self.method_hyperparameter_list = method_hyperparameter_dict_list
-        self.cutoffs_per_method = cutoffs_per_method
-        self.preprocessing_hash = preprocessing_hash
-        self.method_classes = [segmentation_method, anomaly_detection_method]
-        
-        self.segmentation_method = segmentation_method(base_models_path, preprocessing_hash, **method_hyperparameter_dict_list[0], used_cutoffs=cutoffs_per_method[0])
-        
-        base_AD_model_path = os.path.join(base_models_path, "Sequential_break_part", self.segmentation_method.method_name, self.segmentation_method.get_breakpoints_hash())
-        
-        self.anomaly_detection_method = anomaly_detection_method(base_AD_model_path, preprocessing_hash, **method_hyperparameter_dict_list[1], used_cutoffs=cutoffs_per_method[1])
-
-        
-        self.method_name = "SequentialBreak-"+self.segmentation_method.method_name+"+"+self.anomaly_detection_method.method_name
-        
-        if self.segmentation_method.threshold_optimization_method == "DoubleThreshold":
-            self.threshold_function = double_threshold_function
-        elif self.segmentation_method.threshold_optimization_method == "SingleThreshold":
-            self.threshold_function = single_threshold_function
-        else:
-            raise ValueError("Segmentation method is not a {'DoubleThreshold', 'SingleThreshold'} method")
-            
-        super().__init__(base_models_path, preprocessing_hash)
-    
-    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite=False, fit=True, dry_run=False, verbose=False, save_results=False):
-        #X_dfs needs at least "diff" column
-        #y_dfs needs at least "label" column
-        
-        
-        #Get paths:
-        model_name = self.method_name
-        hyperparameter_hash = self.get_hyperparameter_hash()
-        
-        scores_folder = os.path.join(base_scores_path, model_name, hyperparameter_hash)
-        predictions_folder = os.path.join(base_predictions_path, model_name, hyperparameter_hash)
-        
-        if not dry_run and save_results:
-            os.makedirs(scores_folder, exist_ok=True)
-            os.makedirs(predictions_folder, exist_ok=True)
-        
-        scores_path = os.path.join(scores_folder, "scores.pickle")
-        predictions_path = os.path.join(predictions_folder, "predictions.pickle")
-        
-        #Get scores
-        if os.path.exists(scores_path) and os.path.exists(predictions_path) and os.path.exists(self.get_full_model_path()) and not overwrite:
-            
-            if verbose:
-                print("Scores/Prediction/Model already exist, reloading")
-            
-            with open(scores_path, 'rb') as handle:
-                final_scores = pickle.load(handle)
-            with open(predictions_path, 'rb') as handle:
-                final_predictions = pickle.load(handle)
-            self.load_model()
-        
-        else:
-            #First fit segmenter based on used_cutoffs for segmentation_method:
-            y_scores_dfs_segmenter, y_prediction_dfs_segmenter = self.segmentation_method.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit, dry_run, verbose)
-            
-            #After initial fit, find segments which are not predicted as 1
-            segments_to_anomaly_detector_indices = []
-            signal_segments_to_anomaly_detector = []
-            label_segments_to_anomaly_detector = []
-            label_filter_segments_to_anomaly_detector = []
-            
-            for X_df, y_df, label_filters, y_prediction_df, segment_means, breakpoints in zip(X_dfs, y_dfs, label_filters_for_all_cutoffs, y_prediction_dfs_segmenter, self.segmentation_method.segment_means_per_station, self.segmentation_method.breakpoints_per_station):
-                prev_bkp = 0
-                anomalous_segment_indices = []
-                anomalous_segment_signal = []
-                anomalous_segment_labels = []
-                anomalous_segment_label_filters = []
-                
-                signal = X_df[["S","diff"]]
-                labels = y_df["label"].to_frame()
-                
-                for segment_mean, bkp in zip(segment_means, breakpoints):
-                    #Save segment to later pas to anomaly detection method:
-                    if bkp > len(signal):
-                        raise RuntimeError("Breakpoint value is higher than signal length. This might be due to incorrect model reloading.")
-                            
-                    if not self.threshold_function(segment_mean, self.segmentation_method.optimal_threshold):
-                        signal_segment = signal[prev_bkp:bkp] # define a segment between two breakpoints
-                        label_segment = labels[prev_bkp:bkp]                    
-                        label_filter_segment = {k:v[prev_bkp:bkp] for k,v in label_filters.items()}
-                        
-                        if len(signal_segment) == 0:
-                            pass
-                        anomalous_segment_indices.append((prev_bkp,bkp))
-                        anomalous_segment_signal.append(signal_segment)
-                        anomalous_segment_labels.append(label_segment)
-                        anomalous_segment_label_filters.append(label_filter_segment)
-                    
-                    prev_bkp = bkp
-                    
-                signal_segments_to_anomaly_detector.append(anomalous_segment_signal)
-                label_segments_to_anomaly_detector.append(anomalous_segment_labels)
-                segments_to_anomaly_detector_indices.append(anomalous_segment_indices)
-                label_filter_segments_to_anomaly_detector.append(anomalous_segment_label_filters)
-            # for each of these segments, apply anomaly detection method to get scores
-            # Optimize thresholds for scores of these segments based on used cutoffs for anomaly detection method
-            # Obtain predictions per segment
-            
-            #Before passing to AD method, flatten list of list of dfs to list of dfs
-            #We need to keep track of the original station the df belongs to, so we can properly reassign predicted labels later on
-            subsignal_df_index = [[i]*len(sublist) for i, sublist in enumerate(signal_segments_to_anomaly_detector)]
-            
-            # subsignal_df_index = [segment for segment_list in subsignal_df_index for segment in segment_list]
-            # signal_segments_to_anomaly_detector = [segment for segment_list in signal_segments_to_anomaly_detector for segment in segment_list]
-            # label_segments_to_anomaly_detector = [segment for segment_list in label_segments_to_anomaly_detector for segment in segment_list]
-            # segments_to_anomaly_detector_indices = [segment for segment_list in segments_to_anomaly_detector_indices for segment in segment_list]
-            label_filter_segments_to_anomaly_detector = [segment for segment_list in label_filter_segments_to_anomaly_detector for segment in segment_list]
-            
-            #Prediction paths don't -need- to be set like this. Most importantly: AD calculation is always unique, as every input breakpoint set is assumed to be unique
-            unique_segmenter_identifier_path = os.path.join(self.segmentation_method.method_name, self.segmentation_method.get_hyperparameter_hash())
-            AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path = os.path.join(base_scores_path, "Sequential_AD_part", unique_segmenter_identifier_path), os.path.join(base_predictions_path, "Sequential_AD_part",unique_segmenter_identifier_path), os.path.join(base_intermediates_path, "Sequential_AD_part", unique_segmenter_identifier_path)
-            ad_scores, ad_predictions = self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False)    
-            
-            
-            #Recombine predictions of segmenter with predictions of AD method in order to get final predictions
-            final_predictions = y_prediction_dfs_segmenter
-            
-            final_ad_scores = []
-            #initialize dfs 
-            for score_df in y_scores_dfs_segmenter:
-                temp_df = score_df.copy(deep=True)
-                temp_df.iloc[:] = np.nan
-                final_ad_scores.append(temp_df)
-            
-            for df_index, ad_score, ad_prediction, segment_indices in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices):
-                final_predictions[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_prediction
-                final_ad_scores[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_score
-                
-  
-            final_scores = [pd.concat([segmenter_score.squeeze(), ad_score.squeeze()], axis=1, keys=[self.segmentation_method.method_name, self.anomaly_detection_method.method_name]) for segmenter_score, ad_score in zip(y_scores_dfs_segmenter, final_ad_scores)]        #Scores should be list of matrices/dfs, with each column indicating the method used for production of said scores
-            
-            if not dry_run:
-                if save_results:
-                    with open(scores_path, 'wb') as handle:
-                        pickle.dump(final_scores, handle)
-                    with open(predictions_path, 'wb') as handle:
-                        pickle.dump(final_predictions, handle)
-                self.save_model()
-            
-        return final_scores, final_predictions   
-
-        
-    
-    def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False, save_results=False, dry_run=False):
-        
-        return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose, save_results=save_results, dry_run=dry_run)
-        
-    def get_model_string(self):
-        
-        model_string = (str(self.method_classes) + str(self.method_hyperparameter_list) + str(self.cutoffs_per_method)).encode("utf-8")
-        
-        return model_string
-    
-    def save_model(self, overwrite=True):
-        #for model in self.models:
-        #    model.save_model(overwrite)
-        
-        method_path = os.path.join(self.base_models_path, self.method_name, self.preprocessing_hash)
-        os.makedirs(method_path, exist_ok=True)
-        full_path = os.path.join(method_path, self.filename)
-        
-        if not os.path.exists(full_path) or overwrite:
-            f = open(full_path, 'wb')
-            pickle.dump(self.__dict__, f, 2)
-            f.close()
-              
-    def report_thresholds(self):
-        models = [self.segmentation_method, self.anomaly_detection_method]
-        for model in models:
-            print(model.method_name)
-            model.report_thresholds()
-    
 class StackEnsemble(SaveableEnsemble):
     
     def __init__(self, base_models_path, preprocessing_hash, method_classes, method_hyperparameter_dict_list, cutoffs_per_method):

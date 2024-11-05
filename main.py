@@ -15,11 +15,11 @@ from src.methods import SingleThresholdIsolationForest
 
 from src.methods import SingleThresholdBinarySegmentation
 from src.methods import DoubleThresholdBinarySegmentation
-from src.methods import SingleThresholdARIMA, SingleThresholdARIMAbreak
+from src.methods import SingleThresholdARIMA, SingleThresholdSARIMAX
 
 from src.methods import StackEnsemble
 from src.methods import NaiveStackEnsemble
-from src.methods import SequentialEnsemble, SequentialEnsemblePerBreak
+from src.methods import SequentialEnsemble
 
 from src.preprocess import preprocess_per_batch_and_write
 from src.io_functions import save_metric, save_table, save_minmax_stats
@@ -138,6 +138,14 @@ SingleThreshold_ARIMA_hyperparameters = {"p": [3], #5
                                          "score_function_kwargs":[{"beta":1}],
                                          "input": ['diff']
                                          }
+SingleThreshold_SARIMAX_hyperparameters = {"p": [3], #5
+                                         "d": [3],
+                                         "q": [3],          
+                                         "quantiles": [(10,90)],
+                                         "score_function_kwargs":[{"beta":1}],
+                                         "seasonal": [True],
+                                         "exog": [True]
+                                         }
 
 DoubleThresholdBS_hyperparameters = SingleThresholdBS_hyperparameters
 
@@ -195,10 +203,6 @@ Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters = {"segmentati
 
                                                                    "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]], [all_cutoffs[2:], all_cutoffs[:2]]]}
 
-Sequential_DoubleThresholdBS_SingleThresholdARIMAbreak_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
-                                                                   "anomaly_detection_method":[SingleThresholdARIMAbreak], 
-                                                                   "method_hyperparameter_dict_list":ARIMA_ensemble_method_hyperparameter_dict_list, 
-                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]]]}
 
 Sequential_DoubleThresholdBS_DoubleThresholdSPC_hyperparameters = Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters.copy()
 Sequential_DoubleThresholdBS_DoubleThresholdSPC_hyperparameters["segmentation_method"] = [DoubleThresholdBinarySegmentation]
@@ -276,8 +280,8 @@ methods = {
         
         #"SingleLSTM": SingleThresholdLSTM,
         #"SingleThresholdARIMA": SingleThresholdARIMA,
+        "SingleThresholdSARIMAX": SingleThresholdSARIMAX
         #"Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
-        "SequentialBreak-DoubleThresholdBS+SingleThresholdARIMAbreak":SequentialEnsemblePerBreak,
             }
 
 hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
@@ -285,6 +289,8 @@ hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                        "SingleThresholdBS":SingleThresholdBS_hyperparameters, 
                     #  "SingleLSTM": LSTM_hyperparameters,
                        "SingleThresholdARIMA": SingleThreshold_ARIMA_hyperparameters,
+                       
+                       "SingleThresholdSARIMAX": SingleThreshold_SARIMAX_hyperparameters,
                        
                        "DoubleThresholdBS":DoubleThresholdBS_hyperparameters, 
                        "DoubleThresholdSPC":DoubleThresholdSPC_hyperparameters, 
@@ -314,7 +320,6 @@ hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                         "Sequential-DoubleThresholdBS+SingleThresholdIF":Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters,
                         
                         "Sequential-DoubleThresholdBS+SingleThresholdARIMA":Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters,
-                        "SequentialBreak-DoubleThresholdBS+SingleThresholdARIMAbreak":Sequential_DoubleThresholdBS_SingleThresholdARIMAbreak_hyperparameters,
                         
                        
                        }
