@@ -494,7 +494,7 @@ class ARIMA_model(ScoreCalculator):
         else:
             
             y_scores_dfs = []
-            with ProcessPoolExecutor(max_workers=8) as executor:
+            with ProcessPoolExecutor(max_workers=16) as executor:
                 futures = [
                     executor.submit(self.process_dataframe, X_df)
                     for X_df in X_dfs
