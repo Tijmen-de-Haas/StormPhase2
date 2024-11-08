@@ -698,7 +698,7 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     bkps = model.segmentation_method.get_breakpoints(signal)
     
     ax1 = fig.add_subplot(gs[:4,:])
-    plot_bkps(X_df[model.anomaly_detection_method.input], y_df, preds, bkps, show_TP_FP_FN, opacity_TP, ax1, legend_fontsize=25, legend_loc="lower left", legend_bbox_to_anchor=(0, 0))
+    plot_bkps(X_df[model.anomaly_detection_method.input], y_df, preds, bkps, show_TP_FP_FN, opacity_TP, ax1,  legend_loc="lower left", legend_bbox_to_anchor=(0, 0)) #legend_fontsize=25,
     sns.set_theme()
 
      #Calculate y-limits with a margin for ax1
@@ -708,9 +708,9 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     
     plt.yticks(fontsize=20)
     if model.segmentation_method.scaling:
-        plt.ylabel("Scaled difference vector", fontsize=35)
+        plt.ylabel("Scaled "+model.anomaly_detection_method.input+" vector", fontsize=35)
     else:
-        plt.ylabel("Difference vector", fontsize=35)
+        plt.ylabel(model.anomaly_detection_method.input+ " vector", fontsize=35)
     
     # plot reference point and thresholds
     ref_point_value = model.segmentation_method.calculate_reference_point_value(signal, bkps, model.segmentation_method.reference_point)

@@ -29,7 +29,7 @@ from src.evaluation import cutoff_averaged_f_beta, calculate_signed_and_relative
 from src.reporting_functions import print_metrics_and_stats, bootstrap_stats_to_printable
 
 #%% set process variables
-home = "/data/tijmen"
+home = "/data/tijmen/base_roel_model/StormPhase2/data"
 
 dataset = "OS_data" #alternatively: route_data
 data_folder = os.path.join(home, dataset)
@@ -54,7 +54,7 @@ preprocessing_overwrite = False #if set to True, overwrite previous preprocessed
 
 training_overwrite = False
 validation_overwrite = False
-testing_overwrite = False
+testing_overwrite = True
 
 bootstrap_validation = True
 bootstrap_iterations = 10000
@@ -110,7 +110,7 @@ SingleThresholdBS_hyperparameters = {"beta": [0.008],#[0.12, 0.15, 0.20, 0.30, 0
                                      "model": ['l1'], 
                                      'min_size': [200], #[150, 200, 288], 
                                      "jump": [10], #[5, 10], 
-                                     "quantiles": [(10,90), (15, 85)],# (15, 85)], #[(10,90), (15, 85), (20,80)], 
+                                     "quantiles": [(15,85)],# (15, 85)], #[(10,90), (15, 85), (20,80)], 
                                      "scaling": [True], 
                                      "penalty": ['L1'], 
                                      "reference_point":["mean"], #["minimum_length_best_fit", "mean", "median", "longest_median", "longest_mean"], 
@@ -135,8 +135,8 @@ SingleThreshold_ARIMA_hyperparameters = {"p": [3], #5
                                          "d": [3],
                                          "q": [3],          
                                          "quantiles": [(10,90)],
-                                         "score_function_kwargs":[{"beta":beta}],
-                                         "input": ['diff']
+                                         "score_function_kwargs":[{"beta":1, "beta":beta}],
+                                         "input": ['diff', 'S']
                                          }
 SingleThreshold_SARIMAX_hyperparameters = {"p": [3], #5
                                          "d": [3],
@@ -201,7 +201,7 @@ Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters = {"segmentati
                                                                    "anomaly_detection_method":[SingleThresholdARIMA], 
                                                                    "method_hyperparameter_dict_list":ARIMA_ensemble_method_hyperparameter_dict_list, 
 
-                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]]]}
+                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]],[all_cutoffs[2:], all_cutoffs[:2]]]}
 
 
 Sequential_DoubleThresholdBS_DoubleThresholdSPC_hyperparameters = Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters.copy()
@@ -267,7 +267,7 @@ methods = {
         #"Sequential-SingleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for route
         # "Sequential-DoubleThresholdBS+DoubleThresholdSPC":SequentialEnsemble, 
         # "Sequential-SingleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
-        "Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for substations
+        #"Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for substations
         
         # "Naive-SingleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
         # "Naive-DoubleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
@@ -279,7 +279,7 @@ methods = {
         # "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
         
         #"SingleLSTM": SingleThresholdLSTM,
-        "SingleThresholdARIMA": SingleThresholdARIMA,
+        #"SingleThresholdARIMA": SingleThresholdARIMA,
         #"SingleThresholdSARIMAX": SingleThresholdSARIMAX
         "Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
             }

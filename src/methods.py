@@ -460,15 +460,13 @@ class ARIMA_model(ScoreCalculator):
         fitted_vals = arima_fit.fittedvalues
 
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
-        return pd.DataFrame(scores)
+        return pd.DataFrame(scores), fitted_vals.squeeze()
 
     def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
-        hyperparameter_hash = self.get_hyperparameter_hash() 
-        print(len(y_dfs), len(y_dfs[0]) ) 
-     
+        hyperparameter_hash = self.get_hyperparameter_hash()      
         
         scores_folder = os.path.join(base_scores_path, score_calculator_name, hyperparameter_hash)
         predictions_folder = os.path.join(base_predictions_path, model_name, hyperparameter_hash)
@@ -478,6 +476,7 @@ class ARIMA_model(ScoreCalculator):
             os.makedirs(predictions_folder, exist_ok=True)
         
         scores_path = os.path.join(scores_folder, "scores.pickle")
+        values_path = os.path.join(scores_folder, "values.pickle")
         predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
         
         # Train ARIMA model if not already done
@@ -494,18 +493,24 @@ class ARIMA_model(ScoreCalculator):
         else:
             
             y_scores_dfs = []
+            y_vals = []
             with ProcessPoolExecutor(max_workers=16) as executor:
                 futures = [
                     executor.submit(self.process_dataframe, X_df)
                     for X_df in X_dfs
                 ]
                 for future in futures:
-                    y_scores_dfs.append(future.result())
+                    result = future.result()  # Store result to avoid duplicate calls
+                    y_scores_dfs.append(result[0])
+                    y_vals.append(result[1])
 
             if not dry_run:
                 with open(scores_path, 'wb') as handle:
                     pickle.dump(y_scores_dfs, handle)
-
+            if not dry_run:
+                with open(values_path, 'wb') as handle:
+                    pickle.dump(y_vals, handle)
+            
         # Calculate predictions from ARIMA model
         if os.path.exists(predictions_path) and os.path.exists(self.get_full_model_path()) and not overwrite:
             if verbose:
