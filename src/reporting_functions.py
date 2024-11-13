@@ -14,7 +14,7 @@ def print_metrics_and_stats(metric, PRFAUC_table, keep_NA=False):
     print(PRFAUC_table)
 
 def bootstrap_stats_to_printable(mean_table, std_table):
-    mean_table_string = mean_table.applymap("{0:.4f}".format)
-    std_table_string = std_table.applymap("{0:.4f}".format)
+    mean_table_string = mean_table.map("{0:.4f}".format)
+    std_table_string = std_table.map("{0:.4f}".format)
     
     return mean_table_string+"±"+std_table_string

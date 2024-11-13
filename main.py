@@ -52,9 +52,9 @@ write_csv_intermediates = True
 
 preprocessing_overwrite = False #if set to True, overwrite previous preprocessed data
 
-training_overwrite = False
+training_overwrite = True
 validation_overwrite = False
-testing_overwrite = True
+testing_overwrite = False
 
 bootstrap_validation = True
 bootstrap_iterations = 10000
@@ -115,7 +115,7 @@ SingleThresholdBS_hyperparameters = {"beta": [0.008],#[0.12, 0.15, 0.20, 0.30, 0
                                      "penalty": ['L1'], 
                                      "reference_point":["mean"], #["minimum_length_best_fit", "mean", "median", "longest_median", "longest_mean"], 
                                      "score_function_kwargs":[{"beta":beta}],
-                                     "move_avg": [1, 5]}
+                                     "move_avg": [1]}
 
 # LSTM_hyperparameters = {"beta" : [0.20],
 #                         "input_dim": [9], 
@@ -132,18 +132,18 @@ SingleThresholdBS_hyperparameters = {"beta": [0.008],#[0.12, 0.15, 0.20, 0.30, 0
 #                         "score_function_kwargs":[{"beta":beta}]}
 
 SingleThreshold_ARIMA_hyperparameters = {"p": [3], #5
-                                         "d": [3],
-                                         "q": [3],          
-                                         "quantiles": [(10,90)],
-                                         "score_function_kwargs":[{"beta":1, "beta":beta}],
-                                         "input": ['diff', 'S']
-                                         }
-SingleThreshold_SARIMAX_hyperparameters = {"p": [3], #5
-                                         "d": [3],
+                                         "d": [2],
                                          "q": [3],          
                                          "quantiles": [(10,90)],
                                          "score_function_kwargs":[{"beta":1}],
-                                         "seasonal": [True],
+                                         "input": ['diff']
+                                         }
+SingleThreshold_SARIMAX_hyperparameters = {"p": [2], #5
+                                         "d": [2],
+                                         "q": [2],          
+                                         "quantiles": [(10,90)],
+                                         "score_function_kwargs":[{"beta":1}],
+                                         "seasonal": [False],
                                          "exog": [True]
                                          }
 
@@ -161,6 +161,10 @@ scaling_IF_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in
 ARIMA_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
                                                          1:list(ParameterGrid(SingleThreshold_ARIMA_hyperparameters))}))
 ARIMA_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in ARIMA_ensemble_method_hyperparameter_dict_list]
+
+SARIMAX_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
+                                                         1:list(ParameterGrid(SingleThreshold_SARIMAX_hyperparameters))}))
+SARIMAX_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in SARIMAX_ensemble_method_hyperparameter_dict_list]
 
 #Regular ensembles:
 SingleThresholdBS_SingleThresholdSPC_hyperparameters = {"method_classes":[[SingleThresholdBinarySegmentation, SingleThresholdStatisticalProcessControl]], 
@@ -200,8 +204,12 @@ Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters = {"segmentation
 Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
                                                                    "anomaly_detection_method":[SingleThresholdARIMA], 
                                                                    "method_hyperparameter_dict_list":ARIMA_ensemble_method_hyperparameter_dict_list, 
+                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]]]}
 
-                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]],[all_cutoffs[2:], all_cutoffs[:2]]]}
+Sequential_DoubleThresholdBS_SingleThresholdSARIMAX_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
+                                                                   "anomaly_detection_method":[SingleThresholdSARIMAX], 
+                                                                   "method_hyperparameter_dict_list":SARIMAX_ensemble_method_hyperparameter_dict_list, 
+                                                                   "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]], [all_cutoffs[2:], all_cutoffs[:2]]]}
 
 
 Sequential_DoubleThresholdBS_DoubleThresholdSPC_hyperparameters = Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters.copy()
@@ -248,7 +256,7 @@ Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters["segmentation_met
 
 methods = { 
         #    "SingleThresholdIF":SingleThresholdIsolationForest,
-        #     "SingleThresholdBS":SingleThresholdBinarySegmentation, 
+             "SingleThresholdBS":SingleThresholdBinarySegmentation, 
         #     "SingleThresholdSPC":SingleThresholdStatisticalProcessControl,
             
         #     "DoubleThresholdBS":DoubleThresholdBinarySegmentation, 
@@ -279,9 +287,10 @@ methods = {
         # "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
         
         #"SingleLSTM": SingleThresholdLSTM,
-        #"SingleThresholdARIMA": SingleThresholdARIMA,
-        #"SingleThresholdSARIMAX": SingleThresholdSARIMAX
-        "Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
+        # "SingleThresholdARIMA": SingleThresholdARIMA,
+        # "SingleThresholdSARIMAX": SingleThresholdSARIMAX,
+        #"Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
+        #"Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
             }
 
 hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
@@ -320,6 +329,7 @@ hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                         "Sequential-DoubleThresholdBS+SingleThresholdIF":Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters,
                         
                         "Sequential-DoubleThresholdBS+SingleThresholdARIMA":Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters,
+                        "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":Sequential_DoubleThresholdBS_SingleThresholdSARIMAX_hyperparameters,
                         
                        
                        }

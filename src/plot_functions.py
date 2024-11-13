@@ -651,7 +651,7 @@ def plot_IF(X_df, y_df, preds, file, model, model_string, show_IF_scores, show_T
     
     fig.tight_layout()
     
-def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_TP_FP_FN, opacity_TP, scores):
+def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_TP_FP_FN, opacity_TP, scores, interval):
     """
     Plot the sequential BS + ARIMA  method, 
     overlay difference vector with thresholds, breakpoints and reference point,
@@ -690,14 +690,22 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     fig = plt.figure(figsize=(30,16))  
     
     gs = GridSpec(6, 1, figure=fig)
-
-    #check input per model
-    print(model.anomaly_detection_method.input)
+    start = interval[0]
+    end = interval[1]
+    if end == 0:
+        end = len(X_df)
+        
+    # X_df = X_df[start:end]
+    # y_df = y_df[start:end]
+    # preds = preds[start:end]
+    # scores = scores[start:end]
+    
     #Diff plot:    
     signal = X_df[model.anomaly_detection_method.input].values.reshape(-1,1)
     bkps = model.segmentation_method.get_breakpoints(signal)
-    
-    ax1 = fig.add_subplot(gs[:4,:])
+    # print(X_df[model.anomaly_detection_method.input])
+    # bkps = [bkp for bkp in bkps if start <= bkp <= end]
+    ax1 = fig.add_subplot(gs[:3,:])
     plot_bkps(X_df[model.anomaly_detection_method.input], y_df, preds, bkps, show_TP_FP_FN, opacity_TP, ax1,  legend_loc="lower left", legend_bbox_to_anchor=(0, 0)) #legend_fontsize=25,
     sns.set_theme()
 
@@ -705,6 +713,7 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     signal_min, signal_max = np.min(signal), np.max(signal)
     
     ax1.set_ylim(signal_min*1.2, signal_max*1.2)
+    
     
     plt.yticks(fontsize=20)
     if model.segmentation_method.scaling:
@@ -769,15 +778,19 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     
     
     ticks = np.linspace(0,len(X_df["S"])-1, 10, dtype=int)
-
-    ax2 = fig.add_subplot(gs[4:6,:], sharex=ax1)
+    ax1.set_xlim(start, end)
+    
+    ax2 = fig.add_subplot(gs[3:6,:], sharex=ax1)
     # # calculate y_scores
     y_scores = scores
-    dates = plot_threshold_colour(np.array(y_scores)[:,1], np.array(X_df["M_TIMESTAMP"]), ax2, upper_threshold=SPC_threshold)
+    print(signal_max, signal_min)
+    plt.plot(np.array(y_scores)[:,0])
+    plt.xlim(start,end)
+    #dates = plot_threshold_colour(np.array(y_scores)[:,0], np.array(X_df["M_TIMESTAMP"]), ax2, upper_threshold=signal_max, lower_threshold=signal_min)
     sns.set_theme()
 
     # plot threshold on scores
-    threshold_handle = plt.axhline(y=SPC_threshold, color='black', linestyle='dashed', label = "threshold")
+    # threshold_handle = plt.axhline(y=SPC_threshold, color='black', linestyle='dashed', label = "threshold")
 
     ax2.set_ylabel("Scores", fontsize=25)
 
@@ -934,7 +947,7 @@ def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores
         plt.show()
         
         
-def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, scores=None):
+def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, scores=None, interval=(0,0)):
 
     
     # find model used
@@ -971,7 +984,7 @@ def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores
             if "Sequential" in model.method_name :
                 if "ARIMA" in model.method_name:
                     X_df = scale_diff_data(X_df, model.segmentation_method.quantiles)
-                    plot_Sequential_BS_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP, scores)
+                    plot_Sequential_BS_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP, scores, interval)
                     
                 else:
                     if model.segmentation_method.scaling:

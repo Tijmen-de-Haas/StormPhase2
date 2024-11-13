@@ -20,6 +20,7 @@ keras = "^3.5.0"
 tensorflow = "^2.17.0"
 tdqm = "^0.0.1"
 jsonpickle = "^3.3.0"
+ipykernel = "^6.29.5"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
