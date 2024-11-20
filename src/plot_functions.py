@@ -799,7 +799,7 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     
     fig.tight_layout()    
 
-def plot_ARIMA(X_df, y_df, preds, file, model, model_string, show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot,scores):
+def plot_ARIMA(X_df, y_df, preds, file, model, model_string, show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot,scores,values,interval):
     """
     Plot the isolation forest method
 
@@ -855,6 +855,7 @@ def plot_ARIMA(X_df, y_df, preds, file, model, model_string, show_IF_scores, sho
         plot_TP_FP_FN(y_df, preds, opacity_TP, ax1)
         
     plot_diff(X_df)
+    plt.plot(values)
     sns.set_theme()
 
     plt.yticks(fontsize=20)
@@ -901,7 +902,7 @@ def plot_ARIMA(X_df, y_df, preds, file, model, model_string, show_IF_scores, sho
     fig.tight_layout()
 
     
-def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, which_stations = None, n_stations = 3, scores = None):
+def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, which_stations = None, n_stations = 3, scores = None, values=None):
     """
     Plot the predictions made by a specific model in a way that makes sense for the method
 
@@ -938,16 +939,20 @@ def plot_predictions(X_dfs, y_dfs, predictions, dfs_files, model, show_IF_scores
     for station in which_stations:
         X_df = X_dfs[station]
         y_df = y_dfs[station]
+        score = None
+        value = None
         if scores != None:
             score = scores[station]
+        if values != None:
+            value = values[station]
         y_pred_df = predictions[station]
         file = dfs_files[station]
         
-        plot_single_prediction(X_df, y_df, y_pred_df, file, model, show_IF_scores = show_IF_scores, show_TP_FP_FN = show_TP_FP_FN, opacity_TP = opacity_TP, pretty_plot = pretty_plot, scores=score)
+        plot_single_prediction(X_df, y_df, y_pred_df, file, model, show_IF_scores = show_IF_scores, show_TP_FP_FN = show_TP_FP_FN, opacity_TP = opacity_TP, pretty_plot = pretty_plot, scores=score, values=value)
         plt.show()
         
         
-def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, scores=None, interval=(0,0)):
+def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores = True, show_TP_FP_FN = True, opacity_TP = 0.3, pretty_plot = True, scores=None, values=None, interval=(0,0)):
 
     
     # find model used
@@ -978,13 +983,13 @@ def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores
         
         case "SingleThresholdARIMA" :
             X_df = scale_diff_data(X_df, model.quantiles)
-            plot_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot, scores)
+            plot_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_IF_scores, show_TP_FP_FN, opacity_TP, pretty_plot, scores, values, interval)
                         
         case _ :
             if "Sequential" in model.method_name :
                 if "ARIMA" in model.method_name:
                     X_df = scale_diff_data(X_df, model.segmentation_method.quantiles)
-                    plot_Sequential_BS_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP, scores, interval)
+                    plot_Sequential_BS_ARIMA(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP, scores,values, interval)
                     
                 else:
                     if model.segmentation_method.scaling:
@@ -992,6 +997,7 @@ def plot_single_prediction(X_df, y_df, y_pred_df, df_file, model, show_IF_scores
                     plot_Sequential_BS_SPC(X_df, y_df, y_pred_df, df_file, model, str(model.get_model_string()), show_TP_FP_FN, opacity_TP)
             else:
                 raise ValueError(model.method_name + "is not a recognized method to be plotted")
+            
 def scale_diff_data(df, quantiles):
     """
     Scale the "diff" column of a dataframe and return a changed copy

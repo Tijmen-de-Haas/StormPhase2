@@ -31,6 +31,8 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from .helper_functions import filter_label_and_scores_to_array
 from .evaluation import f_beta, f_beta_from_confmat
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class DoubleThresholdMethod:
     #score function must accept false_positives, true_positives,false_negatives as input
@@ -440,11 +442,11 @@ class StatisticalProcessControl(ScoreCalculator):
         return model_string
     
 
-class ARIMA_model(ScoreCalculator):
+class singleARIMA_model(ScoreCalculator):
     
     def __init__(self, p=1, d=1, q=1, input='S', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
-        self.score_calculation_method_name = "ARIMA"
+        self.score_calculation_method_name = "singleARIMA"
         self.order = (p,d,q)
         self.used_cutoffs = used_cutoffs
         self.quantiles = quantiles
@@ -459,10 +461,9 @@ class ARIMA_model(ScoreCalculator):
         arima_fit = arima_model.fit()
 
         fitted_vals = arima_fit.fittedvalues
-        print("Fitted coefficients:")
-        print(arima_fit.params)
+
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
-        return pd.DataFrame(scores), fitted_vals.squeeze()
+        return pd.DataFrame(scores), np.array(fitted_vals).squeeze()
 
     def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
         # ARIMA needs time series data for fitting
@@ -535,7 +536,7 @@ class ARIMA_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs#, y_vals
+        return y_scores_dfs, y_prediction_dfs, y_vals
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -545,6 +546,156 @@ class ARIMA_model(ScoreCalculator):
                             "order": self.order,
                             "input": self.input}).encode("utf-8")    
         return model_string
+
+
+class ARIMA_model(ScoreCalculator):
+    
+    def __init__(self, p=1, d=1, q=1, input='S', max_iter=5, used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
+        super().__init__()
+        self.score_calculation_method_name = "ARIMA"
+        self.order = (p,d,q)
+        self.used_cutoffs = used_cutoffs
+        self.quantiles = quantiles
+        self.input = input
+        self.max_iter = max_iter
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        warnings.filterwarnings("ignore", category=UserWarning) 
+
+    def process_dataframe(self, X_df):
+        
+        arima_model = ARIMA(X_df[self.input], order=self.order, enforce_stationarity=False)
+        arima_fit = arima_model.fit()
+        
+        fitted_vals = arima_fit.fittedvalues
+
+        scores = np.square(fitted_vals.squeeze()-X_df[self.input].squeeze())
+        return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
+    
+    def replace_outliers(self, X_df, y_pred_df, y_val, new_pred):
+        # Align DataFrames
+        new_pred.reset_index(drop=True, inplace=True)
+        y_pred_df.reset_index(drop=True, inplace=True)
+        
+        # Bitwise OR for labels
+        aligned_label = y_pred_df["label"].astype(int).reindex(new_pred.index, fill_value=0)
+        new_pred_label = new_pred["label"].astype(int)
+        y_pred_df["label"] = (aligned_label.astype(bool) | new_pred_label.astype(bool)).astype(int)
+        
+        try:
+            # Identify and replace outliers
+            outlier_indices = new_pred_label[new_pred_label == 1].index
+            outlier_indices = X_df.index.intersection(outlier_indices)
+            X_df.loc[outlier_indices, self.input] = y_val[outlier_indices]
+        except KeyError as e:
+            print(f"KeyError: {e}")
+            print("Outlier indices:", outlier_indices)
+            print("X_df.index:", X_df.index)
+            print("y_val.index:", y_val.index)
+            raise
+        
+        return X_df, y_pred_df
+
+    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
+        # ARIMA needs time series data for fitting
+        model_name = self.method_name
+        score_calculator_name = self.score_calculation_method_name
+        hyperparameter_hash = self.get_hyperparameter_hash()      
+        
+        scores_folder = os.path.join(base_scores_path, score_calculator_name, hyperparameter_hash)
+        predictions_folder = os.path.join(base_predictions_path, model_name, hyperparameter_hash)
+        
+        if not dry_run:
+            os.makedirs(scores_folder, exist_ok=True)
+            os.makedirs(predictions_folder, exist_ok=True)
+        
+        scores_path = os.path.join(scores_folder, "scores.pickle")
+        values_path = os.path.join(scores_folder, "values.pickle")
+        predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
+        
+        # Train ARIMA model if not already done
+        if os.path.exists(scores_path) and not overwrite:
+            if verbose:
+                print("Scores already exist, reloading")
+            with open(scores_path, 'rb') as handle:
+                y_scores_dfs = pickle.load(handle)
+                
+            if fit:
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
+            else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.calculate_and_set_thresholds(self.used_cutoffs)   
+        else:
+            y_prediction_dfs = [pd.Series(0, index=X_dfs[i].index, name="label").to_frame() for i in range(len(X_dfs))]
+           
+            for X_df in X_dfs:    
+                X_df.reset_index(drop=True, inplace=True)
+                scaler = RobustScaler(quantile_range=self.quantiles)
+                X_df.loc[:, self.input] = X_df.loc[:, self.input].astype(float) 
+                scaled_values = scaler.fit_transform(X_df[[self.input]].values)
+                X_df.loc[:, self.input]= pd.Series(scaled_values.flatten(), index=X_df.index, dtype=float)
+            
+            for i in range(self.max_iter):
+                y_scores_dfs = []
+                y_vals = []
+                with ProcessPoolExecutor(max_workers=16) as executor:
+                    futures = [
+                        executor.submit(self.process_dataframe, X_df)
+                        for X_df in X_dfs
+                    ]
+                    for future in futures:
+                        result = future.result()  
+                        y_scores_dfs.append(result[0])
+                        y_vals.append(result[1])
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+                new_predictions = self.predict_from_scores_dfs(y_scores_dfs)
+                            
+                with ProcessPoolExecutor(max_workers=16) as executor:
+                    # Map the function and unpack the returned tuples into separate lists
+                    results = list(executor.map(self.replace_outliers, X_dfs, y_prediction_dfs, y_vals, new_predictions))
+
+                # Split the results into two lists of DataFrames
+                X_dfs, y_prediction_dfs = zip(*results)
+                
+            if not dry_run:
+                with open(scores_path, 'wb') as handle:
+                    pickle.dump(y_scores_dfs, handle)
+            if not dry_run:
+                with open(values_path, 'wb') as handle:
+                    pickle.dump(y_vals, handle)
+            
+        # Calculate predictions from ARIMA model
+        if os.path.exists(predictions_path) and os.path.exists(self.get_full_model_path()) and not overwrite:
+            if verbose:
+                print("Predictions and model already exist, reloading")
+            with open(predictions_path, 'rb') as handle:
+                y_prediction_dfs = pickle.load(handle)
+            self.load_model()
+            #Set loaded model to correct thresholds
+            if fit:
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
+            else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.calculate_and_set_thresholds(self.used_cutoffs)
+        else:
+            self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+            y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
+            
+            if not dry_run:
+                if save_predictions:
+                    with open(predictions_path, 'wb') as handle:
+                        pickle.dump(y_prediction_dfs, handle)
+                if fit:
+                    self.save_model()
+        return y_scores_dfs, y_prediction_dfs, y_vals
+    
+    def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
+        return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
+
+    def get_model_string(self):
+        model_string = str({"quantiles":self.quantiles,
+                            "order": self.order,
+                            "input": self.input,
+                            "max_iter": self.max_iter}).encode("utf-8")    
+        return model_string
+
 
 class SARIMAX_model(ScoreCalculator):
     
@@ -575,7 +726,7 @@ class SARIMAX_model(ScoreCalculator):
         fitted_vals = arima_fit.fittedvalues
         
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
-        return pd.DataFrame(scores), pd.DataFrame(fitted_vals.squeeze())
+        return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
 
     def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
         # ARIMA needs time series data for fitting
@@ -591,6 +742,7 @@ class SARIMAX_model(ScoreCalculator):
             os.makedirs(predictions_folder, exist_ok=True)
         
         scores_path = os.path.join(scores_folder, "scores.pickle")
+        values_path = os.path.join(scores_folder, "values.pickle")
         predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
         
         # Train ARIMA model if not already done
@@ -616,7 +768,7 @@ class SARIMAX_model(ScoreCalculator):
                 for future in futures:
                     result = future.result()
                     y_scores_dfs.append(result[0])
-                    y_vals.append(results[1])
+                    y_vals.append(result[1])
 
             if not dry_run:
                 with open(scores_path, 'wb') as handle:
@@ -1155,6 +1307,14 @@ class SingleThresholdARIMA(ARIMA_model, SingleThresholdMethod, SaveableModel):
         SingleThresholdMethod.__init__(self, score_function=score_function, score_function_kwargs=score_function_kwargs)
         self.method_name = "SingleThresholdARIMA"
         SaveableModel.__init__(self, base_models_path, preprocessing_hash)   
+        
+class SingleThresholdSingleARIMA(singleARIMA_model, SingleThresholdMethod, SaveableModel):
+    
+    def __init__(self, base_models_path, preprocessing_hash, score_function=None, score_function_kwargs=None, **params):
+        super().__init__(**params)
+        SingleThresholdMethod.__init__(self, score_function=score_function, score_function_kwargs=score_function_kwargs)
+        self.method_name = "SingleThresholdSingleARIMA"
+        SaveableModel.__init__(self, base_models_path, preprocessing_hash)           
 
 
 class SingleThresholdSARIMAX(SARIMAX_model, SingleThresholdMethod, SaveableModel):
