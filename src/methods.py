@@ -33,6 +33,7 @@ from .helper_functions import filter_label_and_scores_to_array
 from .evaluation import f_beta, f_beta_from_confmat
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
+pd.options.mode.chained_assignment = None
 
 class DoubleThresholdMethod:
     #score function must accept false_positives, true_positives,false_negatives as input
@@ -527,7 +528,12 @@ class singleARIMA_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
-            self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+            self.load_model()
+            if fit:
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
+            else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.calculate_and_set_thresholds(self.used_cutoffs)
+                
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
             
             if not dry_run:
@@ -536,7 +542,7 @@ class singleARIMA_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs, y_vals
+        return y_scores_dfs, y_prediction_dfs#, y_vals
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -563,29 +569,24 @@ class ARIMA_model(ScoreCalculator):
 
     def process_dataframe(self, X_df):
         
-        arima_model = ARIMA(X_df[self.input], order=self.order, enforce_stationarity=False)
+        arima_model = ARIMA(X_df['arima_input'], order=self.order, enforce_stationarity=False)
         arima_fit = arima_model.fit()
         
         fitted_vals = arima_fit.fittedvalues
 
-        scores = np.square(fitted_vals.squeeze()-X_df[self.input].squeeze())
+        scores = np.square(fitted_vals.squeeze()-X_df['arima_input'].squeeze())
         return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
     
-    def replace_outliers(self, X_df, y_pred_df, y_val, new_pred):
+    def replace_outliers(self, X_df, y_val, new_pred):
         # Align DataFrames
-        new_pred.reset_index(drop=True, inplace=True)
-        y_pred_df.reset_index(drop=True, inplace=True)
-        
-        # Bitwise OR for labels
-        aligned_label = y_pred_df["label"].astype(int).reindex(new_pred.index, fill_value=0)
+        #new_pred.reset_index(drop=True, inplace=True)
         new_pred_label = new_pred["label"].astype(int)
-        y_pred_df["label"] = (aligned_label.astype(bool) | new_pred_label.astype(bool)).astype(int)
         
         try:
             # Identify and replace outliers
             outlier_indices = new_pred_label[new_pred_label == 1].index
             outlier_indices = X_df.index.intersection(outlier_indices)
-            X_df.loc[outlier_indices, self.input] = y_val[outlier_indices]
+            X_df.loc[outlier_indices, 'arima_input'] = y_val[outlier_indices]
         except KeyError as e:
             print(f"KeyError: {e}")
             print("Outlier indices:", outlier_indices)
@@ -593,7 +594,18 @@ class ARIMA_model(ScoreCalculator):
             print("y_val.index:", y_val.index)
             raise
         
-        return X_df, y_pred_df
+        return X_df
+
+    def process_dataframe_final(self, X_df):
+        
+        arima_model = ARIMA(X_df['arima_input'], order=self.order, enforce_stationarity=False)
+        arima_fit = arima_model.fit()
+        
+        fitted_vals = arima_fit.fittedvalues
+
+        scores = np.square(fitted_vals.squeeze()-X_df[self.input].squeeze())
+        return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
+
 
     def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
         # ARIMA needs time series data for fitting
@@ -624,16 +636,17 @@ class ARIMA_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)   
         else:
-            y_prediction_dfs = [pd.Series(0, index=X_dfs[i].index, name="label").to_frame() for i in range(len(X_dfs))]
-           
+                       
             for X_df in X_dfs:    
                 X_df.reset_index(drop=True, inplace=True)
                 scaler = RobustScaler(quantile_range=self.quantiles)
                 X_df.loc[:, self.input] = X_df.loc[:, self.input].astype(float) 
                 scaled_values = scaler.fit_transform(X_df[[self.input]].values)
                 X_df.loc[:, self.input]= pd.Series(scaled_values.flatten(), index=X_df.index, dtype=float)
+                X_df.loc[:, 'arima_input'] = X_df[self.input]
             
-            for i in range(self.max_iter):
+            
+            for i in range(self.max_iter-1):
                 y_scores_dfs = []
                 y_vals = []
                 with ProcessPoolExecutor(max_workers=16) as executor:
@@ -645,15 +658,28 @@ class ARIMA_model(ScoreCalculator):
                         result = future.result()  
                         y_scores_dfs.append(result[0])
                         y_vals.append(result[1])
-                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+                #self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+                std_dev = pd.concat(y_scores_dfs).std().iloc[0] 
+                print(std_dev)
+            
+                self.optimal_threshold = 2.5*std_dev
                 new_predictions = self.predict_from_scores_dfs(y_scores_dfs)
                             
                 with ProcessPoolExecutor(max_workers=16) as executor:
-                    # Map the function and unpack the returned tuples into separate lists
-                    results = list(executor.map(self.replace_outliers, X_dfs, y_prediction_dfs, y_vals, new_predictions))
-
-                # Split the results into two lists of DataFrames
-                X_dfs, y_prediction_dfs = zip(*results)
+                    # Map the function and unpack the returned tuples into separate listsX_df, y_pred_df, y_val, new_pred
+                    X_dfs = list(executor.map(self.replace_outliers, X_dfs, y_vals, new_predictions))
+                    
+            y_scores_dfs = []
+            y_vals = []
+            with ProcessPoolExecutor(max_workers=16) as executor:
+                futures = [
+                    executor.submit(self.process_dataframe_final, X_df)
+                    for X_df in X_dfs
+                ]
+                for future in futures:
+                    result = future.result()  
+                    y_scores_dfs.append(result[0])
+                    y_vals.append(result[1])   
                 
             if not dry_run:
                 with open(scores_path, 'wb') as handle:
@@ -675,7 +701,12 @@ class ARIMA_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
-            self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+            
+            self.load_model()
+            if fit:
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
+            else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.calculate_and_set_thresholds(self.used_cutoffs)
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
             
             if not dry_run:
@@ -719,10 +750,11 @@ class SARIMAX_model(ScoreCalculator):
         x_scaled = scaler.fit_transform(X_df[['diff']].values.reshape(-1, 1))
         if self.exog:
             exo_scaled = scaler.fit_transform(X_df[['S']].values.reshape(-1, 1))  
+            exo_scaled = np.insert(exo_scaled[:-1], 0, 0) #make sure S lags one step.
             arima_model = SARIMAX(x_scaled, exog=exo_scaled, order=self.order, seasonal_order=self.seasonal_order)
         else:
             arima_model = SARIMAX(x_scaled, order=self.order, seasonal_order=self.seasonal_order)
-        arima_fit = arima_model.fit(disp=False)
+        arima_fit = arima_model.fit(disp=False, maxiter=20)
         fitted_vals = arima_fit.fittedvalues
         
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
@@ -778,7 +810,7 @@ class SARIMAX_model(ScoreCalculator):
                     pickle.dump(y_vals, handle)
 
         # Calculate predictions from ARIMA model
-        if os.path.exists(predictions_path) and os.path.exists(self.get_full_model_path()) and not overwrite:
+        if os.path.exists(predictions_path) and os.path.exists(self.get_full_model_path()) and not overwrite:  
             if verbose:
                 print("Predictions and model already exist, reloading")
             with open(predictions_path, 'rb') as handle:
@@ -790,7 +822,12 @@ class SARIMAX_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
-            self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
+            self.load_model()
+            if fit:
+                self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
+            else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.calculate_and_set_thresholds(self.used_cutoffs)
+            
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
             
             if not dry_run:
@@ -799,7 +836,7 @@ class SARIMAX_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs, y_vals
+        return y_scores_dfs, y_prediction_dfs#, y_vals
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -1516,8 +1553,8 @@ class SequentialEnsemble(SaveableEnsemble):
             #Prediction paths don't -need- to be set like this. Most importantly: AD calculation is always unique, as every input breakpoint set is assumed to be unique
             unique_segmenter_identifier_path = os.path.join(self.segmentation_method.method_name, self.segmentation_method.get_hyperparameter_hash())
             AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path = os.path.join(base_scores_path, "Sequential_AD_part", unique_segmenter_identifier_path), os.path.join(base_predictions_path, "Sequential_AD_part",unique_segmenter_identifier_path), os.path.join(base_intermediates_path, "Sequential_AD_part", unique_segmenter_identifier_path)
-            ad_scores, ad_predictions, ad_vals = self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False)
-           
+            ad_scores, ad_predictions= self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False)
+           #ad_vals
             #Recombine predictions of segmenter with predictions of AD method in order to get final predictions
             final_predictions = y_prediction_dfs_segmenter
             
@@ -1528,12 +1565,12 @@ class SequentialEnsemble(SaveableEnsemble):
                 temp_df = score_df.copy(deep=True)
                 temp_df.iloc[:] = np.nan
                 final_ad_scores.append(temp_df)
-                final_ad_vals.append(temp_df)
-           
-            for df_index, ad_score, ad_prediction, segment_indices,ad_val in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices, ad_vals):
+                # final_ad_vals.append(temp_df)
+           #, ad_vals, adval
+            for df_index, ad_score, ad_prediction, segment_indices in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices):
                 final_predictions[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_prediction
                 final_ad_scores[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_score
-                final_ad_vals[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_val.reshape(-1, 1)
+                # final_ad_vals[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_val.reshape(-1, 1)
                 
             final_scores = [pd.concat([segmenter_score.squeeze(), ad_score.squeeze()], axis=1, keys=[self.segmentation_method.method_name, self.anomaly_detection_method.method_name]) for segmenter_score, ad_score in zip(y_scores_dfs_segmenter, final_ad_scores)]        #Scores should be list of matrices/dfs, with each column indicating the method used for production of said scores
               
@@ -1543,8 +1580,8 @@ class SequentialEnsemble(SaveableEnsemble):
                         pickle.dump(final_scores, handle)
                     with open(predictions_path, 'wb') as handle:
                         pickle.dump(final_predictions, handle)
-                    with open(vals_path, 'wb') as handle:
-                         pickle.dump(final_ad_vals, handle)
+                    # with open(vals_path, 'wb') as handle:
+                    #      pickle.dump(final_ad_vals, handle)
                 self.save_model()
             
         return final_scores, final_predictions
