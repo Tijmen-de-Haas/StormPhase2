@@ -15,7 +15,7 @@ from src.methods import SingleThresholdIsolationForest
 
 from src.methods import SingleThresholdBinarySegmentation
 from src.methods import DoubleThresholdBinarySegmentation
-from src.methods import SingleThresholdARIMA, SingleThresholdSARIMAX, SingleThresholdSingleARIMA
+from src.methods import SingleThresholdBasicARIMA, SingleThresholdSARIMAX, SingleThresholdIterativeARIMA
 
 from src.methods import StackEnsemble
 from src.methods import NaiveStackEnsemble
@@ -55,8 +55,8 @@ write_csv_intermediates = True
 preprocessing_overwrite = False #if set to True, overwrite previous preprocessed data
 
 training_overwrite = False
-validation_overwrite = True
-testing_overwrite = True
+validation_overwrite = False
+testing_overwrite = False
 
 bootstrap_validation = True
 bootstrap_iterations = 10000
@@ -120,7 +120,7 @@ SingleThresholdBS_hyperparameters = {"beta": [0.008],#[0.12, 0.15, 0.20, 0.30, 0
                                      "move_avg": [1]}#3,5,7,
 
 
-SingleThreshold_SingleARIMA_hyperparameters = {"p": [3], 
+SingleThreshold_BasicARIMA_hyperparameters = {"p": [3], 
                                          "d": [2],
                                          "q": [3],          
                                          "quantiles": [(10,90)],
@@ -129,7 +129,7 @@ SingleThreshold_SingleARIMA_hyperparameters = {"p": [3],
                                          }
 
 
-SingleThreshold_ARIMA_hyperparameters = {"p": [3], 
+SingleThreshold_IterativeARIMA_hyperparameters = {"p": [3], 
                                          "d": [2],
                                          "q": [3],          
                                          "quantiles": [(10,90)],
@@ -158,13 +158,13 @@ scaling_IF_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list
                                                          1:list(ParameterGrid(SingleThresholdIF_hyperparameters_scaling))}))
 scaling_IF_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in scaling_IF_ensemble_method_hyperparameter_dict_list]
 
-ARIMA_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
-                                                         1:list(ParameterGrid(SingleThreshold_ARIMA_hyperparameters))}))
-ARIMA_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in ARIMA_ensemble_method_hyperparameter_dict_list]
+IterativeARIMA_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
+                                                         1:list(ParameterGrid(SingleThreshold_IterativeARIMA_hyperparameters))}))
+IteratvieARIMA_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in IterativeARIMA_ensemble_method_hyperparameter_dict_list]
 
-SingleARIMA_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
-                                                         1:list(ParameterGrid(SingleThreshold_SingleARIMA_hyperparameters))}))
-SingleARIMA_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in SingleARIMA_ensemble_method_hyperparameter_dict_list]
+BasicARIMA_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
+                                                         1:list(ParameterGrid(SingleThreshold_BasicARIMA_hyperparameters))}))
+BasicARIMA_ensemble_method_hyperparameter_dict_list = [list(l.values()) for l in BasicARIMA_ensemble_method_hyperparameter_dict_list]
 
 SARIMAX_ensemble_method_hyperparameter_dict_list = list(ParameterGrid({0:list(ParameterGrid(DoubleThresholdBS_hyperparameters)), 
                                                          1:list(ParameterGrid(SingleThreshold_SARIMAX_hyperparameters))}))
@@ -205,14 +205,14 @@ Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters = {"segmentation
 
                                                                    "cutoffs_per_method":[[all_cutoffs[2:], all_cutoffs[:2]]]}
 
-Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
-                                                                   "anomaly_detection_method":[SingleThresholdARIMA], 
-                                                                   "method_hyperparameter_dict_list":ARIMA_ensemble_method_hyperparameter_dict_list, 
+Sequential_DoubleThresholdBS_SingleThresholdIteratativeARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
+                                                                   "anomaly_detection_method":[SingleThresholdIterativeARIMA], 
+                                                                   "method_hyperparameter_dict_list":IterativeARIMA_ensemble_method_hyperparameter_dict_list, 
                                                                    "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]], ]}
 
-Sequential_DoubleThresholdBS_SingleThresholdSingleARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
-                                                                   "anomaly_detection_method":[SingleThresholdSingleARIMA], 
-                                                                   "method_hyperparameter_dict_list":SingleARIMA_ensemble_method_hyperparameter_dict_list, 
+Sequential_DoubleThresholdBS_SingleThresholdBasicARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
+                                                                   "anomaly_detection_method":[SingleThresholdBasicARIMA], 
+                                                                   "method_hyperparameter_dict_list":BasicARIMA_ensemble_method_hyperparameter_dict_list, 
                                                                    "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]]]}
 
 Sequential_DoubleThresholdBS_SingleThresholdSARIMAX_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
@@ -295,11 +295,11 @@ methods = {
         # "Sequential-SingleThresholdBS+SingleThresholdIF":SequentialEnsemble, 
         # "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
         
-        #  "SingleThresholdARIMA": SingleThresholdARIMA,
-        #  "SingleThresholdSingleARIMA": SingleThresholdSingleARIMA,
+        #  "SingleThresholdIterativeARIMA": SingleThresholdIterativeARIMA,
+        #  "SingleThresholdBasicARIMA": SingleThresholdBasicARIMA,
         #  "SingleThresholdSARIMAX": SingleThresholdSARIMAX,
-        # "Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
-         "Sequential-DoubleThresholdBS+SingleThresholdSingleARIMA":SequentialEnsemble,
+        # "Sequential-DoubleThresholdBS+SingleThresholdIterativeARIMA":SequentialEnsemble,
+         "Sequential-DoubleThresholdBS+SingleThresholdBasicARIMA":SequentialEnsemble,
         # "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
             }
 
@@ -307,8 +307,8 @@ hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                        "SingleThresholdSPC":SingleThresholdSPC_hyperparameters, 
                        "SingleThresholdBS":SingleThresholdBS_hyperparameters, 
                     #  "SingleLSTM": LSTM_hyperparameters,
-                       "SingleThresholdARIMA": SingleThreshold_ARIMA_hyperparameters,
-                       "SingleThresholdSingleARIMA": SingleThreshold_SingleARIMA_hyperparameters,
+                       "SingleThresholdIterativeARIMA": SingleThreshold_IterativeARIMA_hyperparameters,
+                       "SingleThresholdBasicARIMA": SingleThreshold_BasicARIMA_hyperparameters,
                        
                        "SingleThresholdSARIMAX": SingleThreshold_SARIMAX_hyperparameters,
                        
@@ -339,8 +339,8 @@ hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
                         "Sequential-SingleThresholdBS+SingleThresholdIF":Sequential_SingleThresholdBS_SingleThresholdIF_hyperparameters,
                         "Sequential-DoubleThresholdBS+SingleThresholdIF":Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters,
                         
-                        "Sequential-DoubleThresholdBS+SingleThresholdARIMA":Sequential_DoubleThresholdBS_SingleThresholdARIMA_hyperparameters,
-                        "Sequential-DoubleThresholdBS+SingleThresholdSingleARIMA":Sequential_DoubleThresholdBS_SingleThresholdSingleARIMA_hyperparameters,
+                        "Sequential-DoubleThresholdBS+SingleThresholdIterativeARIMA":Sequential_DoubleThresholdBS_SingleThresholdIterativeARIMA_hyperparameters,
+                        "Sequential-DoubleThresholdBS+SingleThresholdBasicARIMA":Sequential_DoubleThresholdBS_SingleThresholdBasicARIMA_hyperparameters,
                         "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":Sequential_DoubleThresholdBS_SingleThresholdSARIMAX_hyperparameters,
                         
                        
@@ -619,8 +619,10 @@ for method_name in methods:
     full_minmax_path = os.path.join(minmax_stats_path, hyperparameter_hash+".csv")
     
     if testing_overwrite or not os.path.exists(full_metric_path) or not os.path.exists(full_table_path) or not os.path.exists(full_minmax_path):
-        if "Sequential" in model_name:
-            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True)
+        if "Sequential" and "ARIMA" in model_name:
+            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True, save_arima_vals=True)
+        elif "Sequential" in model_name:
+            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True)     
         else:
             y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose)
 

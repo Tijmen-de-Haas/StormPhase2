@@ -443,11 +443,11 @@ class StatisticalProcessControl(ScoreCalculator):
         return model_string
     
 
-class singleARIMA_model(ScoreCalculator):
+class Basic_ARIMA_model(ScoreCalculator):
     
     def __init__(self, p=1, d=1, q=1, input='S', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
-        self.score_calculation_method_name = "singleARIMA"
+        self.score_calculation_method_name = "basic_ARIMA"
         self.order = (p,d,q)
         self.used_cutoffs = used_cutoffs
         self.quantiles = quantiles
@@ -466,7 +466,7 @@ class singleARIMA_model(ScoreCalculator):
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
         return pd.DataFrame(scores), np.array(fitted_vals).squeeze()
 
-    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
+    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True, save_arima_vals=False):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
@@ -481,7 +481,7 @@ class singleARIMA_model(ScoreCalculator):
         
         scores_path = os.path.join(scores_folder, "scores.pickle")
         values_path = os.path.join(scores_folder, "values.pickle")
-        predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
+        predictions_path = os.path.join(predictions_folder,  "predictions.pickle")
         
         # Train ARIMA model if not already done
         if os.path.exists(scores_path) and not overwrite:
@@ -542,7 +542,10 @@ class singleARIMA_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs#, y_vals
+        if save_arima_vals:
+            return y_scores_dfs, y_prediction_dfs, y_vals
+        else:
+            return y_scores_dfs, y_prediction_dfs
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -554,11 +557,11 @@ class singleARIMA_model(ScoreCalculator):
         return model_string
 
 
-class ARIMA_model(ScoreCalculator):
+class Iterative_ARIMA_model(ScoreCalculator):
     
     def __init__(self, p=1, d=1, q=1, input='S', max_iter=5, used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
-        self.score_calculation_method_name = "ARIMA"
+        self.score_calculation_method_name = "Iterative_ARIMA"
         self.order = (p,d,q)
         self.used_cutoffs = used_cutoffs
         self.quantiles = quantiles
@@ -607,7 +610,7 @@ class ARIMA_model(ScoreCalculator):
         return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
 
 
-    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
+    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True, save_arima_vals=False):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
@@ -622,7 +625,7 @@ class ARIMA_model(ScoreCalculator):
         
         scores_path = os.path.join(scores_folder, "scores.pickle")
         values_path = os.path.join(scores_folder, "values.pickle")
-        predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
+        predictions_path = os.path.join(predictions_folder, "predictions.pickle")
         
         # Train ARIMA model if not already done
         if os.path.exists(scores_path) and not overwrite:
@@ -658,9 +661,7 @@ class ARIMA_model(ScoreCalculator):
                         result = future.result()  
                         y_scores_dfs.append(result[0])
                         y_vals.append(result[1])
-                #self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs, recalculate_scores=True)                
                 std_dev = pd.concat(y_scores_dfs).std().iloc[0] 
-                print(std_dev)
             
                 self.optimal_threshold = 2.5*std_dev
                 new_predictions = self.predict_from_scores_dfs(y_scores_dfs)
@@ -715,7 +716,10 @@ class ARIMA_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs, y_vals
+        if save_arima_vals:
+            return y_scores_dfs, y_prediction_dfs, y_vals
+        else:
+            return y_scores_dfs, y_prediction_dfs
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -760,7 +764,7 @@ class SARIMAX_model(ScoreCalculator):
         scores = np.square(fitted_vals.squeeze()-x_scaled.squeeze())
         return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
 
-    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True):
+    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=True, dry_run=False, verbose=False, save_predictions=True, save_arima_vals=False):
         # ARIMA needs time series data for fitting
         model_name = self.method_name
         score_calculator_name = self.score_calculation_method_name
@@ -775,7 +779,7 @@ class SARIMAX_model(ScoreCalculator):
         
         scores_path = os.path.join(scores_folder, "scores.pickle")
         values_path = os.path.join(scores_folder, "values.pickle")
-        predictions_path = os.path.join(predictions_folder, str(self.order) + ".pickle")
+        predictions_path = os.path.join(predictions_folder, "predictions.pickle")
         
         # Train ARIMA model if not already done
         if os.path.exists(scores_path) and not overwrite:
@@ -836,7 +840,10 @@ class SARIMAX_model(ScoreCalculator):
                         pickle.dump(y_prediction_dfs, handle)
                 if fit:
                     self.save_model()
-        return y_scores_dfs, y_prediction_dfs#, y_vals
+        if save_arima_vals:
+            return y_scores_dfs, y_prediction_dfs, y_vals
+        else:
+            return y_scores_dfs, y_prediction_dfs
     
     def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False):
         return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose)
@@ -1337,20 +1344,20 @@ class SaveableModel(ABC):
         self.used_cutoffs = used_cutoffs    
        
 
-class SingleThresholdARIMA(ARIMA_model, SingleThresholdMethod, SaveableModel):
+class SingleThresholdIterativeARIMA(Iterative_ARIMA_model, SingleThresholdMethod, SaveableModel):
     
     def __init__(self, base_models_path, preprocessing_hash, score_function=None, score_function_kwargs=None, **params):
         super().__init__(**params)
         SingleThresholdMethod.__init__(self, score_function=score_function, score_function_kwargs=score_function_kwargs)
-        self.method_name = "SingleThresholdARIMA"
+        self.method_name = "SingleThresholdIterativeARIMA"
         SaveableModel.__init__(self, base_models_path, preprocessing_hash)   
         
-class SingleThresholdSingleARIMA(singleARIMA_model, SingleThresholdMethod, SaveableModel):
+class SingleThresholdBasicARIMA(Basic_ARIMA_model, SingleThresholdMethod, SaveableModel):
     
     def __init__(self, base_models_path, preprocessing_hash, score_function=None, score_function_kwargs=None, **params):
         super().__init__(**params)
         SingleThresholdMethod.__init__(self, score_function=score_function, score_function_kwargs=score_function_kwargs)
-        self.method_name = "SingleThresholdSingleARIMA"
+        self.method_name = "SingleThresholdBasicARIMA"
         SaveableModel.__init__(self, base_models_path, preprocessing_hash)           
 
 
@@ -1461,7 +1468,7 @@ class SequentialEnsemble(SaveableEnsemble):
             
         super().__init__(base_models_path, preprocessing_hash)
     
-    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite=False, fit=True, dry_run=False, verbose=False, save_results=False):
+    def fit_transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite=False, fit=True, dry_run=False, verbose=False, save_results=False, save_arima_vals=False):
         #X_dfs needs at least "diff" column
         #y_dfs needs at least "label" column
         
@@ -1553,8 +1560,12 @@ class SequentialEnsemble(SaveableEnsemble):
             #Prediction paths don't -need- to be set like this. Most importantly: AD calculation is always unique, as every input breakpoint set is assumed to be unique
             unique_segmenter_identifier_path = os.path.join(self.segmentation_method.method_name, self.segmentation_method.get_hyperparameter_hash())
             AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path = os.path.join(base_scores_path, "Sequential_AD_part", unique_segmenter_identifier_path), os.path.join(base_predictions_path, "Sequential_AD_part",unique_segmenter_identifier_path), os.path.join(base_intermediates_path, "Sequential_AD_part", unique_segmenter_identifier_path)
-            ad_scores, ad_predictions= self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False)
-           #ad_vals
+            
+            if save_arima_vals:
+                ad_scores, ad_predictions, ad_vals= self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False, save_arima_vals=save_arima_vals)
+            else:    
+                ad_scores, ad_predictions= self.anomaly_detection_method.fit_transform_predict(signal_segments_to_anomaly_detector, label_segments_to_anomaly_detector, label_filter_segments_to_anomaly_detector, AD_base_scores_path, AD_base_predictions_path, AD_base_intermediates_path, overwrite=overwrite, fit=fit, dry_run=dry_run, verbose=verbose, save_predictions=False)
+            
             #Recombine predictions of segmenter with predictions of AD method in order to get final predictions
             final_predictions = y_prediction_dfs_segmenter
             
@@ -1565,12 +1576,21 @@ class SequentialEnsemble(SaveableEnsemble):
                 temp_df = score_df.copy(deep=True)
                 temp_df.iloc[:] = np.nan
                 final_ad_scores.append(temp_df)
-                # final_ad_vals.append(temp_df)
-           #, ad_vals, adval
-            for df_index, ad_score, ad_prediction, segment_indices in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices):
-                final_predictions[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_prediction
-                final_ad_scores[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_score
-                # final_ad_vals[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_val.reshape(-1, 1)
+                if save_arima_vals:
+                    final_ad_vals.append(temp_df)
+           
+            if save_arima_vals: 
+                for df_index, ad_score, ad_prediction, segment_indices, ad_val in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices, ad_vals):
+                    final_predictions[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_prediction
+                    final_ad_scores[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_score
+                    final_ad_vals[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_val.reshape(-1, 1)
+                with open(vals_path, 'wb') as handle:
+                         pickle.dump(final_ad_vals, handle)
+                         
+            else:
+                for df_index, ad_score, ad_prediction, segment_indices in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices):
+                    final_predictions[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_prediction
+                    final_ad_scores[df_index].iloc[segment_indices[0]:segment_indices[1]] = ad_score
                 
             final_scores = [pd.concat([segmenter_score.squeeze(), ad_score.squeeze()], axis=1, keys=[self.segmentation_method.method_name, self.anomaly_detection_method.method_name]) for segmenter_score, ad_score in zip(y_scores_dfs_segmenter, final_ad_scores)]        #Scores should be list of matrices/dfs, with each column indicating the method used for production of said scores
               
@@ -1580,16 +1600,15 @@ class SequentialEnsemble(SaveableEnsemble):
                         pickle.dump(final_scores, handle)
                     with open(predictions_path, 'wb') as handle:
                         pickle.dump(final_predictions, handle)
-                    # with open(vals_path, 'wb') as handle:
-                    #      pickle.dump(final_ad_vals, handle)
+                    
                 self.save_model()
             
         return final_scores, final_predictions
         
     
-    def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False, save_results=False, dry_run=False):
+    def transform_predict(self, X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, verbose=False, save_results=False, dry_run=False, save_arima_vals=False):
         
-        return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose, save_results=save_results, dry_run=dry_run)
+        return self.fit_transform_predict(X_dfs, y_dfs, label_filters_for_all_cutoffs, base_scores_path, base_predictions_path, base_intermediates_path, overwrite, fit=False, verbose=verbose, save_results=save_results, dry_run=dry_run, save_arima_vals=save_arima_vals)
         
     def get_model_string(self):
         
