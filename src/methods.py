@@ -445,7 +445,7 @@ class StatisticalProcessControl(ScoreCalculator):
 
 class Basic_ARIMA_model(ScoreCalculator):
     
-    def __init__(self, p=1, d=1, q=1, input='S', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
+    def __init__(self, p=1, d=1, q=1, input='diff', used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
         self.score_calculation_method_name = "basic_ARIMA"
         self.order = (p,d,q)
@@ -559,7 +559,7 @@ class Basic_ARIMA_model(ScoreCalculator):
 
 class Iterative_ARIMA_model(ScoreCalculator):
     
-    def __init__(self, p=1, d=1, q=1, input='S', max_iter=5, used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
+    def __init__(self, p=1, d=1, q=1, input='diff', max_iter=5, used_cutoffs=[(0, 24), (24, 288), (288, 4032), (4032, np.inf)], quantiles =(10,90), ):
         super().__init__()
         self.score_calculation_method_name = "Iterative_ARIMA"
         self.order = (p,d,q)
