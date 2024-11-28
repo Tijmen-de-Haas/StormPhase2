@@ -1243,25 +1243,6 @@ class BinarySegmentation(ScoreCalculator, BinarySegmentationBreakpointCalculator
         kernel = np.ones(window_size) / window_size
 
         return np.convolve(arr, kernel, mode='same')    
-    # def moving_average(self, arr, window_size):
-    #     if window_size == 1:  # If window size is 1, just return the array itself
-    #         return arr
-
-    #     # Define kernel
-    #     kernel = np.ones(window_size) / window_size
-
-    #     # Calculate indices for the middle third of the array
-    #     n = len(arr)
-    #     start = n // 3
-    #     end = 2 * n // 3
-
-    #     # Copy the array to avoid modifying the original
-    #     result = np.copy(arr)
-
-    #     # Apply convolution only on the middle third
-    #     result[start:end] = np.convolve(arr[start:end], kernel, mode='same')
-
-    #     return result
 
     def get_model_string(self):
         hyperparam_dict = {}
@@ -1450,12 +1431,6 @@ class SequentialEnsemble(SaveableEnsemble):
         base_AD_model_path = os.path.join(base_models_path, "Sequential_AD_part", self.segmentation_method.method_name, self.segmentation_method.get_breakpoints_hash())
         
         self.anomaly_detection_method = anomaly_detection_method(base_AD_model_path, preprocessing_hash, **method_hyperparameter_dict_list[1], used_cutoffs=cutoffs_per_method[1])
-        #self.models = [method(base_models_path, preprocessing_hash, **hyperparameters, used_cutoffs=used_cutoffs) for method, hyperparameters, used_cutoffs in zip(method_classes, method_hyperparameter_dict_list, self.cutoffs_per_method)]
-        
-        #add third method
-        # - add path
-        # - add method 
-        # - update name (below)
         
         self.method_name = "Sequential-"+self.segmentation_method.method_name+"+"+self.anomaly_detection_method.method_name
         
