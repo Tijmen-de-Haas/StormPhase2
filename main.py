@@ -54,9 +54,9 @@ write_csv_intermediates = True
 
 preprocessing_overwrite = False #if set to True, overwrite previous preprocessed data
 
-training_overwrite = False
+training_overwrite = True
 validation_overwrite = False
-testing_overwrite = False
+testing_overwrite = True
 
 bootstrap_validation = True
 bootstrap_iterations = 10000
@@ -104,7 +104,7 @@ SingleThresholdIF_hyperparameters = SingleThresholdIF_hyperparameters_no_scaling
 
 SingleThresholdSPC_hyperparameters = {"quantiles":[(10,90)], #[(10,90), (15, 85), (20,80)], 
                                       "score_function_kwargs":[{"beta":beta}],
-                                     "move_avg": [1]} #3,5,7
+                                     "move_avg": [1, 5]} #3,5,7
 
 DoubleThresholdSPC_hyperparameters = SingleThresholdSPC_hyperparameters
 
@@ -135,7 +135,7 @@ SingleThreshold_IterativeARIMA_hyperparameters = {"p": [3],
                                          "quantiles": [(10,90)],
                                          "score_function_kwargs":[{"beta":0.5}],
                                          "input": ['diff'],
-                                         "max_iter": [2,5]#16,24
+                                         "max_iter": [5]#16,24
                                          }
 
 SingleThreshold_SARIMAX_hyperparameters = {"p": [3], 
@@ -205,7 +205,7 @@ Sequential_SingleThresholdBS_SingleThresholdSPC_hyperparameters = {"segmentation
 
                                                                    "cutoffs_per_method":[[all_cutoffs[2:], all_cutoffs[:2]]]}
 
-Sequential_DoubleThresholdBS_SingleThresholdIteratativeARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
+Sequential_DoubleThresholdBS_SingleThresholdIterativeARIMA_hyperparameters = {"segmentation_method":[DoubleThresholdBinarySegmentation], 
                                                                    "anomaly_detection_method":[SingleThresholdIterativeARIMA], 
                                                                    "method_hyperparameter_dict_list":IterativeARIMA_ensemble_method_hyperparameter_dict_list, 
                                                                    "cutoffs_per_method":[[all_cutoffs[1:], all_cutoffs[:1]], ]}
@@ -264,43 +264,43 @@ Sequential_DoubleThresholdBS_SingleThresholdIF_hyperparameters["segmentation_met
 #%% define methods:
 
 methods = { 
-           "SingleThresholdIF":SingleThresholdIsolationForest,
-            "SingleThresholdBS":SingleThresholdBinarySegmentation, 
-            "SingleThresholdSPC":SingleThresholdStatisticalProcessControl,
+        #    "SingleThresholdIF":SingleThresholdIsolationForest,
+        #     "SingleThresholdBS":SingleThresholdBinarySegmentation, 
+        #     "SingleThresholdSPC":SingleThresholdStatisticalProcessControl,
             
-            "DoubleThresholdBS":DoubleThresholdBinarySegmentation, 
-            "DoubleThresholdSPC":DoubleThresholdStatisticalProcessControl, 
+        #     "DoubleThresholdBS":DoubleThresholdBinarySegmentation, 
+        #     "DoubleThresholdSPC":DoubleThresholdStatisticalProcessControl, 
             
-            "Naive-SingleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble, 
-            "Naive-DoubleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
-            "Naive-SingleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
-            "Naive-DoubleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-SingleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble, 
+        #     "Naive-DoubleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-SingleThresholdBS+DoubleThresholdSPC":NaiveStackEnsemble,
+        #     "Naive-DoubleThresholdBS+SingleThresholdSPC":NaiveStackEnsemble,
             
-            "SingleThresholdBS+SingleThresholdSPC":StackEnsemble, 
-            "DoubleThresholdBS+DoubleThresholdSPC":StackEnsemble, 
-            "SingleThresholdBS+DoubleThresholdSPC":StackEnsemble,
-            "DoubleThresholdBS+SingleThresholdSPC":StackEnsemble,
+        #     "SingleThresholdBS+SingleThresholdSPC":StackEnsemble, 
+        #     "DoubleThresholdBS+DoubleThresholdSPC":StackEnsemble, 
+        #     "SingleThresholdBS+DoubleThresholdSPC":StackEnsemble,
+        #     "DoubleThresholdBS+SingleThresholdSPC":StackEnsemble,
             
-            "Sequential-SingleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for route
-            "Sequential-DoubleThresholdBS+DoubleThresholdSPC":SequentialEnsemble, 
-            "Sequential-SingleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
-            "Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for substations
+        #     "Sequential-SingleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for route
+        #     "Sequential-DoubleThresholdBS+DoubleThresholdSPC":SequentialEnsemble, 
+        #     "Sequential-SingleThresholdBS+DoubleThresholdSPC":SequentialEnsemble,
+        #    "Sequential-DoubleThresholdBS+SingleThresholdSPC":SequentialEnsemble, #this one for substations
             
-            "Naive-SingleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
-            "Naive-DoubleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
+        #     "Naive-SingleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
+        #     "Naive-DoubleThresholdBS+SingleThresholdIF":NaiveStackEnsemble,
                 
-            "SingleThresholdBS+SingleThresholdIF":StackEnsemble,
-            "DoubleThresholdBS+SingleThresholdIF":StackEnsemble,
+        #     "SingleThresholdBS+SingleThresholdIF":StackEnsemble,
+        #     "DoubleThresholdBS+SingleThresholdIF":StackEnsemble,
             
-            "Sequential-SingleThresholdBS+SingleThresholdIF":SequentialEnsemble, 
-            "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
+        #     "Sequential-SingleThresholdBS+SingleThresholdIF":SequentialEnsemble, 
+        #     "Sequential-DoubleThresholdBS+SingleThresholdIF":SequentialEnsemble,
             
-            "SingleThresholdIterativeARIMA": SingleThresholdIterativeARIMA,
-            "SingleThresholdBasicARIMA": SingleThresholdBasicARIMA,
-            "SingleThresholdSARIMAX": SingleThresholdSARIMAX,
-            "Sequential-DoubleThresholdBS+SingleThresholdIterativeARIMA":SequentialEnsemble,
-            "Sequential-DoubleThresholdBS+SingleThresholdBasicARIMA":SequentialEnsemble,
-            "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
+        #     "SingleThresholdIterativeARIMA": SingleThresholdIterativeARIMA,
+        #     "SingleThresholdBasicARIMA": SingleThresholdBasicARIMA,
+        #     "SingleThresholdSARIMAX": SingleThresholdSARIMAX,
+             "Sequential-DoubleThresholdBS+SingleThresholdIterativeARIMA":SequentialEnsemble,
+        #     "Sequential-DoubleThresholdBS+SingleThresholdBasicARIMA":SequentialEnsemble,
+             "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
             }
 
 hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,

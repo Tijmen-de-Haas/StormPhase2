@@ -498,7 +498,7 @@ class Basic_ARIMA_model(ScoreCalculator):
             
             y_scores_dfs = []
             y_vals = []
-            with ProcessPoolExecutor(max_workers=16) as executor:
+            with ProcessPoolExecutor(max_workers=32) as executor:
                 futures = [
                     executor.submit(self.process_dataframe, X_df)
                     for X_df in X_dfs
@@ -528,10 +528,11 @@ class Basic_ARIMA_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
-            self.load_model()
+            
             if fit:
                 self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.load_model()
                 self.calculate_and_set_thresholds(self.used_cutoffs)
                 
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
@@ -605,8 +606,10 @@ class Iterative_ARIMA_model(ScoreCalculator):
         arima_fit = arima_model.fit()
         
         fitted_vals = arima_fit.fittedvalues
-
+        
         scores = np.square(fitted_vals.squeeze()-X_df[self.input].squeeze())
+        print(max(fitted_vals))
+        print(max(X_df[self.input]))
         return pd.DataFrame(scores), np.array(fitted_vals.squeeze())
 
 
@@ -652,7 +655,7 @@ class Iterative_ARIMA_model(ScoreCalculator):
             for i in range(self.max_iter-1):
                 y_scores_dfs = []
                 y_vals = []
-                with ProcessPoolExecutor(max_workers=16) as executor:
+                with ProcessPoolExecutor(max_workers=32) as executor:
                     futures = [
                         executor.submit(self.process_dataframe, X_df)
                         for X_df in X_dfs
@@ -666,13 +669,13 @@ class Iterative_ARIMA_model(ScoreCalculator):
                 self.optimal_threshold = 2.5*std_dev
                 new_predictions = self.predict_from_scores_dfs(y_scores_dfs)
                             
-                with ProcessPoolExecutor(max_workers=16) as executor:
+                with ProcessPoolExecutor(max_workers=32) as executor:
                     # Map the function and unpack the returned tuples into separate listsX_df, y_pred_df, y_val, new_pred
                     X_dfs = list(executor.map(self.replace_outliers, X_dfs, y_vals, new_predictions))
                     
             y_scores_dfs = []
             y_vals = []
-            with ProcessPoolExecutor(max_workers=16) as executor:
+            with ProcessPoolExecutor(max_workers=32) as executor:
                 futures = [
                     executor.submit(self.process_dataframe_final, X_df)
                     for X_df in X_dfs
@@ -703,10 +706,11 @@ class Iterative_ARIMA_model(ScoreCalculator):
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
             
-            self.load_model()
+            
             if fit:
                 self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.load_model()
                 self.calculate_and_set_thresholds(self.used_cutoffs)
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
             
@@ -796,7 +800,7 @@ class SARIMAX_model(ScoreCalculator):
             
             y_scores_dfs = []
             y_vals = []
-            with ProcessPoolExecutor(max_workers=16) as executor:
+            with ProcessPoolExecutor(max_workers=32) as executor:
                 futures = [
                     executor.submit(self.process_dataframe, X_df)
                     for X_df in X_dfs
@@ -826,10 +830,11 @@ class SARIMAX_model(ScoreCalculator):
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
                 self.calculate_and_set_thresholds(self.used_cutoffs)
         else:
-            self.load_model()
+            
             if fit:
                 self.optimize_thresholds(y_dfs, y_scores_dfs, label_filters_for_all_cutoffs, self.used_cutoffs)
             else: #If not fit, ensure thresholds are still correctly optimized for used_cutoffs
+                self.load_model()
                 self.calculate_and_set_thresholds(self.used_cutoffs)
             
             y_prediction_dfs = self.predict_from_scores_dfs(y_scores_dfs)
@@ -1547,12 +1552,14 @@ class SequentialEnsemble(SaveableEnsemble):
             final_ad_scores = []
             final_ad_vals = []
             #initialize dfs 
+            
             for score_df in y_scores_dfs_segmenter:
                 temp_df = score_df.copy(deep=True)
-                temp_df.iloc[:] = np.nan
-                final_ad_scores.append(temp_df)
+                temp_score_df = temp_df.copy(deep=True)  # Independent copy for scores
+                final_ad_scores.append(temp_score_df)
                 if save_arima_vals:
-                    final_ad_vals.append(temp_df)
+                    temp_vals_df = temp_df.copy(deep=True)  # Independent copy for values
+                    final_ad_vals.append(temp_vals_df)
            
             if save_arima_vals: 
                 for df_index, ad_score, ad_prediction, segment_indices, ad_val in zip(subsignal_df_index, ad_scores, ad_predictions, segments_to_anomaly_detector_indices, ad_vals):

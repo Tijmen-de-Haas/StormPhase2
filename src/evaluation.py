@@ -134,6 +134,7 @@ def bootstrap_stats_per_confmat_array(bootstrap_samples, confmat_per_station, be
         else:
             metrics[i,1] = 0
         metrics[i,2] = (1+beta**2) * (tp) / ((1+beta**2)*tp + (beta**2)*fn + fp + eps)
+     
         
     mean_metrics = np.zeros((3,), dtype=np.float64)
     mean_metrics[0] = np.mean(metrics[:,0])
