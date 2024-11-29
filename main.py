@@ -54,8 +54,8 @@ write_csv_intermediates = True
 
 preprocessing_overwrite = False #if set to True, overwrite previous preprocessed data
 
-training_overwrite = False
-validation_overwrite = True
+training_overwrite = True
+validation_overwrite = False
 testing_overwrite = True
 
 bootstrap_validation = True
@@ -135,7 +135,7 @@ SingleThreshold_ARIMA_hyperparameters = {"p": [3],
                                          "quantiles": [(10,90)],
                                          "score_function_kwargs":[{"beta":0.5}],
                                          "input": ['diff'],
-                                         "max_iter": [2,5]#16,24
+                                         "max_iter": [5]#16,24
                                          }
 
 SingleThreshold_SARIMAX_hyperparameters = {"p": [3], 
@@ -298,9 +298,9 @@ methods = {
         #  "SingleThresholdARIMA": SingleThresholdARIMA,
         #  "SingleThresholdSingleARIMA": SingleThresholdSingleARIMA,
         #  "SingleThresholdSARIMAX": SingleThresholdSARIMAX,
-        # "Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
+        #"Sequential-DoubleThresholdBS+SingleThresholdARIMA":SequentialEnsemble,
          "Sequential-DoubleThresholdBS+SingleThresholdSingleARIMA":SequentialEnsemble,
-        # "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
+         "Sequential-DoubleThresholdBS+SingleThresholdSARIMAX":SequentialEnsemble,
             }
 
 hyperparameter_dict = {"SingleThresholdIF":SingleThresholdIF_hyperparameters,
@@ -619,11 +619,12 @@ for method_name in methods:
     full_minmax_path = os.path.join(minmax_stats_path, hyperparameter_hash+".csv")
     
     if testing_overwrite or not os.path.exists(full_metric_path) or not os.path.exists(full_table_path) or not os.path.exists(full_minmax_path):
-        if "Sequential" in model_name:
-            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True)
+        if "Sequential" and "ARIMA" in model_name:
+            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True, save_arima_vals=True)
+        elif "Sequential" in model_name:
+            y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose, save_results=True)     
         else:
             y_test_scores_dfs, y_test_predictions_dfs = model.transform_predict(X_test_dfs_preprocessed, y_test_dfs_preprocessed, label_filters_for_all_cutoffs_test, base_scores_path=scores_path, base_predictions_path=predictions_path, base_intermediates_path=intermediates_path, overwrite=testing_overwrite, verbose=verbose)
-
         metric = cutoff_averaged_f_beta(y_test_dfs_preprocessed, y_test_predictions_dfs, label_filters_for_all_cutoffs_test, beta)
         
         minmax_stats = calculate_signed_and_relative_stats(X_test_dfs_preprocessed, y_test_dfs_preprocessed, y_test_predictions_dfs, load_column="S_original")

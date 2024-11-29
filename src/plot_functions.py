@@ -102,7 +102,7 @@ def plot_bkps(signal, y_df, preds, bkps, show_TP_FP_FN, opacity, ax, legend_loc=
     if show_TP_FP_FN:
         plot_TP_FP_FN(y_df, preds, opacity, ax, legend_loc, legend_bbox_to_anchor)
     
-    ax.plot(signal, **kwargs)
+    ax.plot(signal, label='diff', **kwargs)
     
     # color each regime according to breakpoints
     bkps = sorted(bkps)
@@ -708,7 +708,7 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
     ax1 = fig.add_subplot(gs[:3,:])
     plot_bkps(X_df[inp], y_df, preds, bkps, show_TP_FP_FN, opacity_TP, ax1,  legend_loc="lower left", legend_bbox_to_anchor=(0, 0)) #legend_fontsize=25,
 
-    plt.plot(values.iloc[:, 0], label='predicted ARIMAX values')
+    plt.plot(values.iloc[:, 0], label=f'predicted iterative ARIMA values')
     sns.set_theme()
 
      #Calculate y-limits with a margin for ax1
@@ -729,49 +729,6 @@ def plot_Sequential_BS_ARIMA(X_df, y_df, preds, file, model, model_string, show_
         
     prev_bkp = 0
     
-    # plot the means of each segment
-    # for bkp in bkps:
-    #     segment = X_df[inp][prev_bkp:bkp] # define a segment between two breakpoints
-    #     segment_mean = np.mean(segment)
-        
-    #     #If segment is classified as anomalous according to BS:
-    #     if model.threshold_function(segment_mean, model.segmentation_method.optimal_threshold):
-    #         plt.axhline(y=segment_mean, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='r', linestyle='-', linewidth=2, label = 'Mean over segment')
-            
-    #         plt.axhline(y=ref_point_value, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='orange', linestyle='-', linewidth=2, label = "BS Reference Point: " + model.segmentation_method.reference_point)
-    #         plt.axhline(y=ref_point_value + lower_threshold, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='black', linestyle='dashed', label = "BS threshold")
-    #         plt.axhline(y=ref_point_value + upper_threshold, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='black', linestyle='dashed')
-    #     # else: #if segment is left to SPC anomaly detection
-            
-        #     SPC_threshold = model.anomaly_detection_method.optimal_threshold
-
-        #     if model.anomaly_detection_method.threshold_optimization_method == "DoubleThreshold":
-        #         SPC_lower_threshold = SPC_threshold[0]
-        #         SPC_upper_threshold = SPC_threshold[1]
-        #     else:
-        #         SPC_lower_threshold = -SPC_threshold
-        #         SPC_upper_threshold = SPC_threshold
-                
-        #     # fit Robust scaler on segment
-        #     scaler = RobustScaler(quantile_range=model.anomaly_detection_method.quantiles)
-        #     scaler.fit(segment.values.reshape(-1,1))
-        #     res = scaler.inverse_transform(np.array([SPC_lower_threshold, SPC_upper_threshold, 0]).reshape(-1,1))
-        #     plot_lower_threshold, plot_upper_threshold, plot_reference = res[0], res[1], res[2]
-            
-        #     # plot SPC middle:
-        #     ax1.axhline(y=plot_reference, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='purple', linestyle='-', linewidth=2, label = "SPC segment median")
-
-            
-        #     # plot thresholds
-        #     threshold_handle = plt.axhline(y=plot_lower_threshold, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='black', linestyle='dotted', label = "SPC threshold")
-        #     ax1.axhline(y=plot_upper_threshold, xmin=prev_bkp / len(X_df[inp]), xmax=bkp/len(X_df[inp]), color='black', linestyle='dotted')
-            
-        #     # helper to add red colour to legend
-        #     red_handle = mpatches.Patch(color='red', label='Predicted as outlier')
-            
-        #     ax1.legend(handles=[threshold_handle, red_handle], loc="upper left", bbox_to_anchor=(0, 1))
-        
-        #prev_bkp = bkp
     
     # stop repeating labels for legend
     handles, labels = plt.gca().get_legend_handles_labels()

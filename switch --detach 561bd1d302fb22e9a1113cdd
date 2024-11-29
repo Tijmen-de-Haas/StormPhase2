@@ -1,0 +1,251 @@
+[33mcommit 0f0b991cf98662cbe404c9b2604d0fcce595077a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Thu Nov 28 12:07:12 2024 +0100
+
+    deleted excess code
+
+[33mcommit 4bb07eadd1d93d232bd3e70466d501175de7a67e[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Thu Nov 28 11:27:32 2024 +0100
+
+    ready for use
+
+[33mcommit 050c3db5c56ad7b10d25250d33a25c6153d904fa[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Wed Nov 27 13:08:37 2024 +0100
+
+    beautifications
+
+[33mcommit 561bd1d302fb22e9a1113cdd31f1214a78aa8279[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Wed Nov 27 09:53:29 2024 +0100
+
+    error fixes
+
+[33mcommit dc061869bb8274408de2a463382dcb871a5ab898[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Wed Nov 20 16:17:40 2024 +0100
+
+    final adjustments before beautifications
+
+[33mcommit e19eede921f76c75f6b2bd734b803adbbcbe2695[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Wed Nov 13 12:09:02 2024 +0100
+
+    ARIMA model applied as spc
+
+[33mcommit a9c8f4cbb2b561c0d3982685585ff408940a2900[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Fri Nov 8 13:13:46 2024 +0100
+
+    minor updates
+
+[33mcommit 09197b6a1fe19733287ce609178694591d9fa9fa[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Thu Nov 7 09:38:36 2024 +0100
+
+    minor updates
+
+[33mcommit f4585a75c9f64420b82e1509c8eb22c1aede66fd[m
+Merge: 8947d2e 6e6d6b9
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Tue Nov 5 09:32:23 2024 +0100
+
+    Merge branch 'main' of https://github.com/RoelBouman/StormPhase2
+
+[33mcommit 8947d2e5f6af884233374498ad59e392bf54ddcf[m[33m ([m[1;32mRoelBouman-main[m[33m)[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Tue Nov 5 09:19:16 2024 +0100
+
+    added SARIMAX (with freeze problems)
+
+[33mcommit 4f3aaba0a942fd3a835677eb212e61cc67f0cbe8[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Fri Nov 1 09:43:21 2024 +0100
+
+    graphs and combined arima model implemented, break arima WIP
+
+[33mcommit 5efca2dda43871a4bbf5e0012d92482ba14953d1[m
+Merge: 0ecbb2b 0881cbb
+Author: Tijmen de Haas <63872469+Tijmen-de-Haas@users.noreply.github.com>
+Date:   Mon Oct 14 14:28:14 2024 +0200
+
+    Merge pull request #1 from Tijmen-de-Haas/adding_move_avg
+    
+    implemented ARIMA and moving average
+
+[33mcommit 0881cbb06add6a2d767a5c9e362e0f645cee1bde[m
+Author: Tijmen-de-Haas <tijmendehaas@hotmail.nl>
+Date:   Mon Oct 14 14:21:30 2024 +0200
+
+    implemented ARIMA and moving average
+
+[33mcommit 6e6d6b940f8f5e858775a58252f4e70ece6d37ca[m[33m ([m[1;31mupstream/main[m[33m, [m[1;31morigin/base_code[m[33m)[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Mon Aug 19 19:26:55 2024 +0200
+
+    Reworked plots for thesis.
+
+[33mcommit 94071a9ce4c7eeb3905f01d7b94840c708697a79[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Aug 13 18:51:25 2024 +0200
+
+    Added average precision and recall to bootstrap stats calculation 2
+
+[33mcommit 489d98c408bce18da9146dc4540a3b48959b8ef2[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Jul 17 15:45:11 2024 +0200
+
+    Added average precision and recall to bootstrap stats calculation
+
+[33mcommit 2d2dac7dc7b6979c73cf24d90e7935d32a7e0459[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Mon Jul 15 17:13:40 2024 +0200
+
+    Minor plot fixes
+
+[33mcommit 31060322855efe1e6540b0e947690d5fed47ee33[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Sat Jul 13 19:05:28 2024 +0200
+
+    Added bar plot of AUC
+
+[33mcommit 871237c4fffbb04344c201909319343c01f8da95[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Mon Jul 8 17:05:01 2024 +0200
+
+    Reworked F1/recall/precision plotting to reuse code
+
+[33mcommit 0ecbb2b6c727779162db9ccbac168f1be95e7a2a[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Fri May 17 10:36:28 2024 +0200
+
+    Added illustrative switch event example plots
+
+[33mcommit c7b99e3e275126b16071b9f8752569e01197d51c[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed May 15 22:25:38 2024 +0200
+
+    Updated prediction figure plot for OS data
+
+[33mcommit 33b12fc22bd745db5af87512944f542e10053abd[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed May 15 22:25:23 2024 +0200
+
+    Updated incorrect capacity estimate plot
+
+[33mcommit a89a6227aab4306cda4a30682d84e1bdb1771167[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed May 1 23:05:06 2024 +0200
+
+    Increased hyperparam range
+
+[33mcommit faabfdd58df81ab6479acd4af8f5a7301436d7af[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Thu Apr 11 17:24:39 2024 +0200
+
+    Added scaling of best_fit option wrt to signal length.
+
+[33mcommit 3319caf4187e8bd3e7d2752b765566f26218e0a6[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Apr 10 11:26:06 2024 +0200
+
+    Added minimum_length_best_fit option
+
+[33mcommit f045b1a79b62fd91002cb43a5919e21458493393[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Apr 10 11:25:50 2024 +0200
+
+    Fixed mistake where first cutoff threshold was described as 8h instead of 6.
+
+[33mcommit 83c68df48a6afb63e26cfae0abc736ba97b96472[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Apr 9 15:52:37 2024 +0200
+
+    Removed obsolete comments
+
+[33mcommit 083e85ef0917d1c0e4ca95b5bbc858ad8df5d726[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Fri Apr 5 13:38:52 2024 +0200
+
+    Added splitting of hyperparameter table
+
+[33mcommit 7db8103d028e83bd6b5b7de223fb71fb77c5d074[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Fri Apr 5 13:38:35 2024 +0200
+
+    Updated yml file
+
+[33mcommit 4ba4894ed0934178752490d5916a77c94945d3ec[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Apr 3 23:17:05 2024 +0200
+
+    Added hyperparameter tables
+
+[33mcommit 4683d12414e1f0933d8249f65d660b03dbcc5598[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Apr 3 23:16:54 2024 +0200
+
+    Update on main.py settings
+
+[33mcommit 49cacc4e509880d5648fc5900886bb6ca0216f33[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Apr 2 16:03:18 2024 +0200
+
+    Added second example of wrong load estimate without filtering
+
+[33mcommit 99957eee755da3883d7a81239458ca53de58fa77[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Apr 2 07:55:08 2024 +0200
+
+    Updated route_data preprocessing to deal with difference in scale between S and BU
+
+[33mcommit 8c9983922b33a9c03e136aa7f9252a6dd66f20cc[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Mar 26 16:54:19 2024 +0100
+
+    Rescaled figure to MW instead of kW
+
+[33mcommit 69c3f80b69494a8203bf732012665bdc7079fa34[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Sun Mar 24 02:23:25 2024 +0100
+
+    Updated prediction plotting in line with paper example
+
+[33mcommit b74fa57cb7f961f39e14cb7bc9578d43f2d38183[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Sun Mar 24 02:08:20 2024 +0100
+
+    Added saving of preprocessed y_dfs. Old plotting procedure was faulty because unprocessed y_dfs were used for label plotting.
+
+[33mcommit bd806d52b618f8934e9c10842578afe68d55e869[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Mar 20 19:29:36 2024 +0100
+
+    Added fictitious capacity boundaries to the substation measurement example plot.
+
+[33mcommit 36fdb2dc5f2e9b0f15657d43f8d49c898773ab16[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Wed Mar 20 17:32:48 2024 +0100
+
+    Finished load estimate scatter plots
+
+[33mcommit 6ba99f7bfc509855bc8e7dd5efd4eef6a3c24b79[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Mar 19 18:11:13 2024 +0100
+
+    Updated x labels and removed obsolete histograms
+
+[33mcommit 766c0aaa63a9bb9bfb554a1c50ea1d2750d235a0[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Mar 19 18:10:26 2024 +0100
+
+    Added additional min/max info to minmax stats and fixed bug when all of station is filtered.
+
+[33mcommit 9d563ac8d8d2efb3cce841248a4d0103a35e56a4[m
+Author: Roel Bouman <r.bouman@science.ru.nl>
+Date:   Tue Mar 19 18:10:00 2024 +0100
+
+    Changed prediction figure plotting to use actual database
+
+[33
